@@ -42,7 +42,6 @@ optionsContainer.addEventListener("click", (e) => {
     if (e.target.closest('.remove-btn')) { e.target.closest('.option-group').remove(); }
 });
 
-// ฟังก์ชัน AI แปลงลิงก์ Google Drive ให้อ่านเป็นรูปภาพได้
 function formatImageUrl(url) {
     if (!url) return "";
     const gdMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
@@ -78,7 +77,7 @@ form.addEventListener("submit", async (e) => {
     optionGroups.forEach(group => {
         const name = group.querySelector(".opt-name").value.trim();
         let img = group.querySelector(".opt-img").value.trim();
-        img = formatImageUrl(img); // แปลงลิงก์ก่อนเซฟ
+        img = formatImageUrl(img);
         if (name !== "") {
             optionsData.push({ name: name, image: img });
             initialVotes[name] = 0;
@@ -188,7 +187,6 @@ window.loadCampaigns = async function() {
 
             let optionsHtml = '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">';
             data.options.forEach(opt => { 
-                // เพิ่ม onerror โหลดรูปสำรองถ้าภาพเสีย
                 const placeholder = "https://placehold.co/400x400/f3f4f6/a8a29e?text=No+Image";
                 const imgTag = opt.image ? `<img src="${opt.image}" onclick="viewImage(event, '${opt.image}', '${opt.name}')" class="w-16 h-16 object-cover rounded-lg mb-2 border border-gray-200 cursor-zoom-in hover:opacity-80 transition-opacity" onerror="this.onerror=null;this.src='${placeholder}';">` : '';
                 optionsHtml += `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-center flex flex-col justify-center items-center">${imgTag}<span class="text-sm font-semibold text-gray-800">${opt.name}</span></div>`; 
@@ -244,6 +242,7 @@ function isStudentEligible(campaignRules, studentInfo) {
     return false;
 }
 
+// ================= ระบบแสดงผลคะแนนและสถิติแยกตามชั้น (UI) =================
 window.viewResults = async function(campaignId) {
     const resultDiv = document.getElementById(`results_${campaignId}`);
     if (!resultDiv.classList.contains('hidden')) { 
@@ -252,7 +251,7 @@ window.viewResults = async function(campaignId) {
         return; 
     }
     resultDiv.classList.remove('hidden');
-    resultDiv.innerHTML = '<div class="text-center py-4 text-purple-700 font-medium animate-pulse">กำลังเชื่อมต่อผลคะแนนแบบเรียลไทม์และประมวลผลสถิติรายห้อง...</div>';
+    resultDiv.innerHTML = '<div class="text-center py-4 text-purple-700 font-medium animate-pulse">กำลังเชื่อมต่อผลคะแนนและประมวลผลสถิติแยกชั้น...</div>';
 
     window.liveResultListeners[campaignId] = onSnapshot(doc(db, "campaigns", campaignId), async (docSnap) => {
         if (docSnap.exists()) {
@@ -277,17 +276,30 @@ window.viewResults = async function(campaignId) {
                 });
             }
 
+            // จัดกลุ่มห้องแยกตามระดับชั้น
+            let statsByLevel = {};
+            let sortedRooms = Object.keys(eligibleByRoom).sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
+            sortedRooms.forEach(r => {
+                let levelMatch = r.match(/ม\.(\d)/);
+                let level = levelMatch ? `ม.${levelMatch[1]}` : 'อื่นๆ';
+                if(!statsByLevel[level]) statsByLevel[level] = [];
+                statsByLevel[level].push(r);
+            });
+
             let resultHtml = `
                 <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
                     <div class="flex items-center gap-2"><span class="w-3 h-3 bg-red-500 rounded-full animate-ping absolute"></span><span class="w-3 h-3 bg-red-500 rounded-full relative"></span><h4 class="font-bold text-gray-800">สรุปผลคะแนน (Live)</h4></div>
                     <div class="flex gap-2">
-                        <button onclick="exportExcel('${campaignId}', '${title}')" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก Excel</button>
-                        <button onclick="exportPDF('${campaignId}', '${title}')" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก PDF</button>
+                        <button onclick="exportExcel('${campaignId}')" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก Excel</button>
+                        <button onclick="exportPDF('${campaignId}')" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก PDF</button>
                     </div>
                 </div>
-                <div id="pdf-content-${campaignId}" class="bg-white p-2">
+                
+                <div id="pdf-content-${campaignId}" class="bg-white p-2 pb-6">
                     <h2 class="text-center font-bold text-purple-900 mb-4 hidden print-title">${title}</h2>
-                    <ul class="space-y-4">
+                    
+                    <h4 class="font-bold text-gray-800 mb-3 border-b pb-2">คะแนนรวมทั้งหมด</h4>
+                    <ul class="space-y-4 mb-6">
             `;
             
             let totalVotes = Object.values(votes).reduce((a, b) => a + b, 0);
@@ -303,40 +315,181 @@ window.viewResults = async function(campaignId) {
                     </li>
                 `;
             });
-            resultHtml += `</ul><p class="text-sm text-gray-600 mt-5 text-right font-medium">จำนวนผู้ใช้สิทธิ์ทั้งหมด: <span class="font-bold text-purple-700">${totalVotes}</span> คน</p>`;
+            resultHtml += `</ul><p class="text-sm text-gray-600 mt-2 text-right font-medium">จำนวนผู้ใช้สิทธิ์ทั้งหมด: <span class="font-bold text-purple-700">${totalVotes}</span> คน</p>`;
 
-            resultHtml += `<div class="mt-8 border-t border-gray-200 pt-4">
-                <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    สถิติการใช้สิทธิ์แบ่งตามห้องเรียน
-                </h4>
-                <div class="max-h-60 overflow-y-auto rounded-lg border border-gray-200">
-                    <table class="w-full text-xs text-left border-collapse">
-                        <thead class="bg-gray-100 sticky top-0 shadow-sm">
-                            <tr><th class="p-2 border-b">ห้องเรียน</th><th class="p-2 border-b text-center">มีสิทธิ์ (คน)</th><th class="p-2 border-b text-center">มาโหวต (คน)</th><th class="p-2 border-b text-center">คิดเป็น %</th></tr>
-                        </thead>
-                        <tbody>
-            `;
+            // สร้างตารางสถิติแยกตามระดับชั้น พร้อมตั้งค่า Page Break สำหรับ PDF
+            let levels = Object.keys(statsByLevel).sort();
+            if (levels.length === 0) {
+                resultHtml += `<div class="mt-8 border-t border-gray-200 pt-4"><p class="text-center text-gray-500">กรุณากดตรวจสอบฐานข้อมูลด้านซ้ายมือก่อนดูสถิติรายห้อง</p></div>`;
+            } else {
+                levels.forEach((level) => {
+                    // คำสั่ง html2pdf__page-break จะสั่งให้ PDF ขึ้นหน้าใหม่ตรงนี้พอดี
+                    resultHtml += `
+                        <div class="html2pdf__page-break"></div> 
+                        <div class="mt-8 pt-6 border-t border-gray-300 page-break-section">
+                            <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                สถิติการใช้สิทธิ์ ชั้น ${level}
+                            </h4>
+                            <div class="rounded-lg border border-gray-200">
+                                <table class="w-full text-xs text-left border-collapse">
+                                    <thead class="bg-gray-100">
+                                        <tr><th class="p-2 border-b">ห้องเรียน</th><th class="p-2 border-b text-center">มีสิทธิ์ (คน)</th><th class="p-2 border-b text-center">มาโหวต (คน)</th><th class="p-2 border-b text-center">คิดเป็น %</th></tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    statsByLevel[level].forEach(r => {
+                        let eligible = eligibleByRoom[r];
+                        let voted = votedByRoom[r] || 0;
+                        let pct = eligible > 0 ? Math.round((voted/eligible)*100) : 0;
+                        let pctColor = pct === 100 ? 'text-green-600' : (pct >= 50 ? 'text-blue-600' : 'text-red-500');
+                        resultHtml += `<tr><td class="p-2 border-b font-medium">${r}</td><td class="p-2 border-b text-center">${eligible}</td><td class="p-2 border-b text-center font-bold text-gray-800">${voted}</td><td class="p-2 border-b text-center font-bold ${pctColor}">${pct}%</td></tr>`;
+                    });
 
-            let sortedRooms = Object.keys(eligibleByRoom).sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
-            if(sortedRooms.length === 0) resultHtml += `<tr><td colspan="4" class="p-4 text-center text-gray-500">กรุณากดตรวจสอบฐานข้อมูลด้านซ้ายมือก่อนดูสถิติ</td></tr>`;
-            
-            sortedRooms.forEach(r => {
-                let eligible = eligibleByRoom[r];
-                let voted = votedByRoom[r] || 0;
-                let pct = eligible > 0 ? Math.round((voted/eligible)*100) : 0;
-                let pctColor = pct === 100 ? 'text-green-600' : (pct > 50 ? 'text-blue-600' : 'text-red-500');
-                resultHtml += `<tr><td class="p-2 border-b font-medium">${r}</td><td class="p-2 border-b text-center">${eligible}</td><td class="p-2 border-b text-center font-bold text-gray-800">${voted}</td><td class="p-2 border-b text-center font-bold ${pctColor}">${pct}%</td></tr>`;
-            });
+                    // บรรทัดสรุปรวมของแต่ละชั้น
+                    let totalLevelEligible = statsByLevel[level].reduce((sum, r) => sum + eligibleByRoom[r], 0);
+                    let totalLevelVoted = statsByLevel[level].reduce((sum, r) => sum + (votedByRoom[r] || 0), 0);
+                    let totalLevelPct = totalLevelEligible > 0 ? Math.round((totalLevelVoted/totalLevelEligible)*100) : 0;
+                    resultHtml += `
+                                    <tr class="bg-blue-50 font-bold">
+                                        <td class="p-2 border-t text-blue-900">รวม ${level}</td>
+                                        <td class="p-2 border-t text-center text-blue-900">${totalLevelEligible}</td>
+                                        <td class="p-2 border-t text-center text-blue-900">${totalLevelVoted}</td>
+                                        <td class="p-2 border-t text-center text-blue-700">${totalLevelPct}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+                });
+            }
 
-            resultHtml += `</tbody></table></div></div></div>`;
+            resultHtml += `</div>`; 
             resultDiv.innerHTML = resultHtml;
         }
     });
 }
 
-window.exportExcel = async function(campaignId, title) { /* ใช้ของเดิม */ }
-window.exportPDF = function(campaignId, title) { /* ใช้ของเดิม */ }
+// ================= ระบบส่งออก EXCEL (แยกชีทตามระดับชั้น) =================
+window.exportExcel = async function(campaignId) {
+    try {
+        Swal.fire({ title: 'กำลังสร้างไฟล์ Excel...', text: 'ระบบกำลังแยกข้อมูลรายชั้น...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+        
+        const docSnap = await getDoc(doc(db, "campaigns", campaignId));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const votes = data.votes_count;
+            const safeTitle = data.title.replace(/[/\\?%*:|"<>]/g, '-'); 
+            
+            const wb = XLSX.utils.book_new();
+
+            // ชีท 1: สรุปผลโหวตรวม
+            let totalVotes = Object.values(votes).reduce((a, b) => a + b, 0);
+            let summaryData = [
+                ["หัวข้อการลงคะแนน:", data.title], [""],
+                ["--- สรุปคะแนนผู้สมัคร ---", "", ""],
+                ["ตัวเลือก / ผู้สมัคร", "คะแนนโหวต (คน)", "คิดเป็นเปอร์เซ็นต์ (%)"]
+            ];
+            Object.entries(votes).sort((a, b) => b[1] - a[1]).forEach(([option, count]) => {
+                const percent = totalVotes === 0 ? 0 : ((count / totalVotes) * 100).toFixed(2);
+                summaryData.push([option, count, percent + "%"]);
+            });
+            summaryData.push(["", "", ""]); 
+            summaryData.push(["รวมผู้ใช้สิทธิ์ทั้งหมด", totalVotes, "100%"]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "สรุปผลโหวต");
+
+            // ดึงข้อมูลเตรียมแยกชั้น
+            const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
+            let votedByRoom = {};
+            votersSnap.forEach(v => {
+                let r = v.data().room || "ไม่ระบุ";
+                votedByRoom[r] = (votedByRoom[r] || 0) + 1;
+            });
+
+            let eligibleByRoom = {};
+            if(window.globalStudents) {
+                window.globalStudents.forEach(s => {
+                    if(isStudentEligible(data.allowed_voters, s)) {
+                        let r = s.room || "ไม่ระบุ";
+                        eligibleByRoom[r] = (eligibleByRoom[r] || 0) + 1;
+                    }
+                });
+            }
+
+            let statsByLevel = {};
+            let sortedRooms = Object.keys(eligibleByRoom).sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
+            sortedRooms.forEach(r => {
+                let levelMatch = r.match(/ม\.(\d)/);
+                let level = levelMatch ? `ม.${levelMatch[1]}` : 'อื่นๆ';
+                if(!statsByLevel[level]) statsByLevel[level] = [];
+                statsByLevel[level].push(r);
+            });
+
+            // สร้างชีทใหม่สำหรับแต่ละระดับชั้น
+            let levels = Object.keys(statsByLevel).sort();
+            levels.forEach(level => {
+                let levelData = [
+                    [`สถิติการใช้สิทธิ์ ชั้น ${level}`],
+                    ["ห้องเรียน", "จำนวนผู้มีสิทธิ์ (คน)", "มาใช้สิทธิ์ (คน)", "คิดเป็นเปอร์เซ็นต์ (%)"]
+                ];
+                
+                let totalLevelEligible = 0;
+                let totalLevelVoted = 0;
+
+                statsByLevel[level].forEach(r => {
+                    let eligible = eligibleByRoom[r];
+                    let voted = votedByRoom[r] || 0;
+                    let pct = eligible > 0 ? ((voted/eligible)*100).toFixed(2) : 0;
+                    
+                    totalLevelEligible += eligible;
+                    totalLevelVoted += voted;
+
+                    levelData.push([r, eligible, voted, pct + "%"]);
+                });
+                
+                let totalPct = totalLevelEligible > 0 ? ((totalLevelVoted/totalLevelEligible)*100).toFixed(2) : 0;
+                levelData.push(["", "", "", ""]);
+                levelData.push([`รวม ${level}`, totalLevelEligible, totalLevelVoted, totalPct + "%"]);
+
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(levelData), `สถิติ_${level}`);
+            });
+            
+            XLSX.writeFile(wb, `ผลโหวต_${safeTitle}.xlsx`);
+            Swal.close();
+        }
+    } catch (error) { 
+        console.error(error); Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel', 'error'); 
+    }
+}
+
+// ================= ระบบส่งออก PDF (แก้ให้จัดหน้าสมบูรณ์) =================
+window.exportPDF = async function(campaignId) {
+    try {
+        Swal.fire({ title: 'กำลังสร้างไฟล์ PDF...', text: 'กำลังจัดหน้ากระดาษแยกตามระดับชั้น', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+        
+        const docSnap = await getDoc(doc(db, "campaigns", campaignId));
+        let title = "รายงานผลคะแนน";
+        if (docSnap.exists()) { title = docSnap.data().title.replace(/[/\\?%*:|"<>]/g, '-'); }
+
+        const element = document.getElementById(`pdf-content-${campaignId}`);
+        element.querySelector('.print-title').classList.remove('hidden');
+        
+        const opt = { 
+            margin: [10, 10, 10, 10], 
+            filename: `ผลโหวต_${title}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2 }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] } // บังคับให้ระบบรู้จักคำสั่งแบ่งหน้า
+        };
+        
+        html2pdf().set(opt).from(element).save().then(() => { 
+            element.querySelector('.print-title').classList.add('hidden'); 
+            Swal.close();
+        }).catch(err => { console.error(err); Swal.fire('ผิดพลาด', 'บันทึก PDF ไม่สำเร็จ', 'error'); });
+    } catch (error) { console.error(error); Swal.fire('ผิดพลาด', 'ระบบ PDF ขัดข้อง', 'error'); }
+}
 
 window.viewImage = function(e, imageUrl, title) {
     e.preventDefault(); e.stopPropagation();
@@ -370,11 +523,8 @@ async function checkStudentCount() {
     catch (error) { document.getElementById("lastUpdatedText").innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล"; }
 }
 
-// 📌 ฟังก์ชันดูรายชื่อนักเรียนในห้องนั้นๆ
 window.showStudentsInRoom = function(roomName) {
     if (!window.globalStudents) return;
-    
-    // คัดกรองและเรียงรหัสนักเรียน
     let studentsInRoom = window.globalStudents.filter(s => s.room === roomName).sort((a, b) => a.id.localeCompare(b.id));
     
     let listHtml = `<ul class="text-left text-sm space-y-2 mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">`;
@@ -386,16 +536,9 @@ window.showStudentsInRoom = function(roomName) {
     Swal.fire({
         title: `รายชื่อนักเรียนห้อง ${roomName}`,
         html: `<p class="text-sm text-gray-600">จำนวนทั้งหมด: ${studentsInRoom.length} คน</p>` + listHtml,
-        showCancelButton: true,
-        confirmButtonColor: '#6b21a8',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'ปิดหน้าต่าง',
-        cancelButtonText: 'กลับไปหน้าสรุป'
+        showCancelButton: true, confirmButtonColor: '#6b21a8', cancelButtonColor: '#6b7280', confirmButtonText: 'ปิดหน้าต่าง', cancelButtonText: 'กลับไปหน้าสรุป'
     }).then((result) => {
-        if (result.dismiss === Swal.DismissReason.cancel) {
-            // ถ้ากดย้อนกลับ ให้เรียกหน้าสรุปกลับมาเปิดใหม่
-            document.getElementById("viewDatabaseBtn").click();
-        }
+        if (result.dismiss === Swal.DismissReason.cancel) { document.getElementById("viewDatabaseBtn").click(); }
     });
 }
 
@@ -412,7 +555,6 @@ document.getElementById("viewDatabaseBtn").addEventListener("click", () => {
 
     let sortedRooms = Object.keys(roomStats).sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
 
-    // เพิ่มปุ่ม "ดูรายชื่อ" ในตาราง
     let tableHtml = `<div class="max-h-64 overflow-y-auto mt-4 rounded-lg border border-gray-200"><table class="w-full text-sm text-left border-collapse"><thead class="bg-gray-100 sticky top-0 shadow-sm"><tr><th class="p-2 border-b">ห้องเรียน</th><th class="p-2 border-b text-center">จำนวน (คน)</th><th class="p-2 border-b text-center">รายชื่อ</th></tr></thead><tbody>`;
     sortedRooms.forEach(r => { 
         tableHtml += `<tr>
