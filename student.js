@@ -94,7 +94,9 @@ async function renderCampaigns(campaignsToRender) {
 
     for (const data of campaignsToRender) {
         const campaignId = data.id;
-        const voterSnap = await getDoc(doc(db, "campaigns", campaignId, "voters", currentUser.uid));
+        
+        // ✨ แก้ไขจุดนี้: ตรวจสอบการโหวตจาก "รหัสนักเรียน (studentData.id)" แทน UID ของอีเมล
+        const voterSnap = await getDoc(doc(db, "campaigns", campaignId, "voters", studentData.id));
         
         const now = new Date().getTime();
         const isExpired = data.endTime && now >= new Date(data.endTime).getTime();
@@ -113,7 +115,6 @@ async function renderCampaigns(campaignsToRender) {
 
         let optionsHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">`;
         data.options.forEach((opt, index) => {
-            // ระบบโหลดรูปภาพสำรอง ถ้ารูปลิงก์เสียหรือโหลดไม่ได้
             const placeholder = "https://placehold.co/400x400/f3f4f6/a8a29e?text=No+Image";
             const imgTag = opt.image ? `<img src="${opt.image}" onclick="viewImage(event, '${opt.image}', '${opt.name}')" class="w-32 h-32 sm:w-36 sm:h-36 object-cover rounded-xl mb-3 border-2 border-gray-100 shadow-sm hover:opacity-80 transition-opacity cursor-zoom-in relative z-10" onerror="this.onerror=null;this.src='${placeholder}';">` : '';
             
@@ -205,15 +206,17 @@ window.submitVote = async function(campaignId) {
         if (result.isConfirmed) {
             Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
             try {
-                const voterRef = doc(db, "campaigns", campaignId, "voters", currentUser.uid);
+                // ✨ แก้ไขจุดนี้: บันทึกข้อมูลลงใน Document ที่ชื่อเป็น "รหัสนักเรียน"
+                const voterRef = doc(db, "campaigns", campaignId, "voters", studentData.id);
                 if ((await getDoc(voterRef)).exists()) { Swal.fire('ข้อผิดพลาด', 'ท่านได้ใช้สิทธิ์ในรายการนี้ไปแล้วครับ', 'error'); return; }
 
                 await setDoc(voterRef, { 
                     votedAt: serverTimestamp(),
-                    studentId: studentData.id,
+                    studentId: studentData.id, // เก็บเป็นหลักฐาน
                     name: studentData.name,
                     room: studentData.room,
-                    level: studentData.level
+                    level: studentData.level,
+                    uidUsed: currentUser.uid // เก็บไว้ตรวจสอบได้ว่าใช้อีเมลไหนมาโหวต
                 });
                 
                 await updateDoc(doc(db, "campaigns", campaignId), { [`votes_count.${voteValue}`]: increment(1) });
