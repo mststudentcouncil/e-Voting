@@ -52,33 +52,33 @@ function isStudentEligible(campaignRules, studentInfo) {
     return false;
 }
 
-function fetchCampaignsRealtime() {
+// เปลี่ยนจาก onSnapshot เป็น getDocs ดึงครั้งเดียวตอนโหลด
+async function fetchCampaigns() { 
     const campaignList = document.getElementById("campaignList");
     const q = query(collection(db, "campaigns"), where("status", "==", "open"));
 
-    onSnapshot(q, (querySnapshot) => {
-        let newState = "";
+    try {
+        const querySnapshot = await getDocs(q); // ดึงข้อมูลแค่รอบเดียว
         let tempCampaigns = [];
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             if (isStudentEligible(data.allowed_voters, studentData)) {
-                newState += doc.id + data.status + (data.endTime || "");
                 tempCampaigns.push({ id: doc.id, ...data });
             }
         });
 
-        if (newState !== currentCampaignState) {
-            currentCampaignState = newState;
-            allCampaigns = tempCampaigns;
-            const keyword = document.getElementById('searchInput').value.toLowerCase();
-            if (keyword) {
-                renderCampaigns(allCampaigns.filter(camp => camp.title.toLowerCase().includes(keyword) || (camp.description && camp.description.toLowerCase().includes(keyword))));
-            } else {
-                renderCampaigns(allCampaigns);
-            }
+        allCampaigns = tempCampaigns;
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        if (keyword) {
+            renderCampaigns(allCampaigns.filter(camp => camp.title.toLowerCase().includes(keyword) || (camp.description && camp.description.toLowerCase().includes(keyword))));
+        } else {
+            renderCampaigns(allCampaigns);
         }
-    }, () => { campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>'; });
+    } catch (error) { 
+        console.error(error);
+        campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>'; 
+    }
 }
 
 async function renderCampaigns(campaignsToRender) {

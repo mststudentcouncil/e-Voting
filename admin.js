@@ -265,23 +265,29 @@ function isStudentEligible(campaignRules, studentInfo) {
     return false;
 }
 
-// ================= ระบบแสดงผลคะแนนและสถิติแยกตามชั้น (UI) =================
 window.viewResults = async function(campaignId) {
     const resultDiv = document.getElementById(`results_${campaignId}`);
     if (!resultDiv.classList.contains('hidden')) { 
         resultDiv.classList.add('hidden'); 
-        if(window.liveResultListeners[campaignId]) { window.liveResultListeners[campaignId](); delete window.liveResultListeners[campaignId]; }
         return; 
     }
     resultDiv.classList.remove('hidden');
-    resultDiv.innerHTML = '<div class="text-center py-4 text-purple-700 font-medium animate-pulse">กำลังเชื่อมต่อผลคะแนนและประมวลผลสถิติแยกชั้น...</div>';
+    resultDiv.innerHTML = '<div class="text-center py-4 text-purple-700 font-medium animate-pulse">กำลังโหลดผลคะแนนและประมวลผลสถิติแยกชั้น...</div>';
 
-    window.liveResultListeners[campaignId] = onSnapshot(doc(db, "campaigns", campaignId), async (docSnap) => {
-        if (docSnap.exists()) {
+    // สร้างฟังก์ชันโหลดข้อมูลข้างใน
+    const loadData = async () => {
+        try {
+            const docSnap = await getDoc(doc(db, "campaigns", campaignId));
+            if (!docSnap.exists()) {
+                resultDiv.innerHTML = '<div class="text-center text-red-500">ไม่พบข้อมูล</div>';
+                return;
+            }
+
             const data = docSnap.data();
             const votes = data.votes_count;
             const title = data.title;
             
+            // ดึงข้อมูลผู้โหวต 1 ครั้ง
             const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
             let votedByRoom = {};
             votersSnap.forEach(v => {
@@ -311,7 +317,12 @@ window.viewResults = async function(campaignId) {
 
             let resultHtml = `
                 <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 bg-red-500 rounded-full animate-ping absolute"></span><span class="w-3 h-3 bg-red-500 rounded-full relative"></span><h4 class="font-bold text-gray-800">สรุปผลคะแนน (Live)</h4></div>
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-gray-800">สรุปผลคะแนน</h4>
+                        <button onclick="document.getElementById('refreshBtn_${campaignId}').click()" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md transition-colors flex items-center gap-1" id="refreshBtn_${campaignId}">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> อัปเดตข้อมูล
+                        </button>
+                    </div>
                     <div class="flex gap-2">
                         <button onclick="exportExcel('${campaignId}')" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก Excel</button>
                         <button onclick="exportPDF('${campaignId}')" class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md shadow-sm">ส่งออก PDF</button>
@@ -320,7 +331,6 @@ window.viewResults = async function(campaignId) {
                 
                 <div id="pdf-content-${campaignId}" class="bg-white p-2 pb-6">
                     <h2 class="text-center font-bold text-purple-900 mb-4 hidden print-title">${title}</h2>
-                    
                     <h4 class="font-bold text-gray-800 mb-3 border-b pb-2">คะแนนรวมทั้งหมด</h4>
                     <ul class="space-y-4 mb-6">
             `;
@@ -340,20 +350,15 @@ window.viewResults = async function(campaignId) {
             });
             resultHtml += `</ul><p class="text-sm text-gray-600 mt-2 text-right font-medium">จำนวนผู้ใช้สิทธิ์ทั้งหมด: <span class="font-bold text-purple-700">${totalVotes}</span> คน</p>`;
 
-            // สร้างตารางสถิติแยกตามระดับชั้น พร้อมตั้งค่า Page Break สำหรับ PDF
             let levels = Object.keys(statsByLevel).sort();
             if (levels.length === 0) {
                 resultHtml += `<div class="mt-8 border-t border-gray-200 pt-4"><p class="text-center text-gray-500">กรุณากดตรวจสอบฐานข้อมูลด้านซ้ายมือก่อนดูสถิติรายห้อง</p></div>`;
             } else {
                 levels.forEach((level) => {
-                    // คำสั่ง html2pdf__page-break จะสั่งให้ PDF ขึ้นหน้าใหม่ตรงนี้พอดี
                     resultHtml += `
                         <div class="html2pdf__page-break"></div> 
                         <div class="mt-8 pt-6 border-t border-gray-300 page-break-section">
-                            <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                                สถิติการใช้สิทธิ์ ชั้น ${level}
-                            </h4>
+                            <h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2">สถิติการใช้สิทธิ์ ชั้น ${level}</h4>
                             <div class="rounded-lg border border-gray-200">
                                 <table class="w-full text-xs text-left border-collapse">
                                     <thead class="bg-gray-100">
@@ -370,7 +375,6 @@ window.viewResults = async function(campaignId) {
                         resultHtml += `<tr><td class="p-2 border-b font-medium">${r}</td><td class="p-2 border-b text-center">${eligible}</td><td class="p-2 border-b text-center font-bold text-gray-800">${voted}</td><td class="p-2 border-b text-center font-bold ${pctColor}">${pct}%</td></tr>`;
                     });
 
-                    // บรรทัดสรุปรวมของแต่ละชั้น
                     let totalLevelEligible = statsByLevel[level].reduce((sum, r) => sum + eligibleByRoom[r], 0);
                     let totalLevelVoted = statsByLevel[level].reduce((sum, r) => sum + (votedByRoom[r] || 0), 0);
                     let totalLevelPct = totalLevelEligible > 0 ? Math.round((totalLevelVoted/totalLevelEligible)*100) : 0;
@@ -390,8 +394,20 @@ window.viewResults = async function(campaignId) {
 
             resultHtml += `</div>`; 
             resultDiv.innerHTML = resultHtml;
+
+            // ผูก Event ให้ปุ่ม Refresh
+            document.getElementById(`refreshBtn_${campaignId}`).addEventListener('click', () => {
+                resultDiv.innerHTML = '<div class="text-center py-4 text-purple-700 font-medium animate-pulse">กำลังอัปเดตข้อมูล...</div>';
+                loadData();
+            });
+
+        } catch (error) {
+            console.error(error);
+            resultDiv.innerHTML = '<div class="text-center py-4 text-red-500 font-medium">เกิดข้อผิดพลาดในการโหลดผลคะแนน</div>';
         }
-    });
+    };
+
+    loadData(); // เรียกใช้งานครั้งแรก
 }
 
 // ================= ระบบส่งออก EXCEL (แยกชีทตามระดับชั้น) =================
