@@ -14,9 +14,7 @@ onAuthStateChanged(auth, async (user) => {
     const email = user.email; 
     document.getElementById("userEmail").innerText = "กำลังตรวจสอบสิทธิ์...";
 
-    // ตัดเอาเฉพาะตัวเลข 5 ตัวก่อน @mst.ac.th
     const emailMatch = email.match(/(\d{5})@mst\.ac\.th$/);
-    
     if (emailMatch) {
         const studentId = emailMatch[1]; 
         try {
@@ -24,35 +22,24 @@ onAuthStateChanged(auth, async (user) => {
             if (studentDoc.exists()) {
                 currentUser = user;
                 studentData = studentDoc.data();
-                
-                // แสดงชื่อและห้องเรียนที่มุมขวาบน
+                studentData.id = studentId; 
                 document.getElementById("userEmail").innerHTML = `${studentData.name} <br><span class="text-[10px] text-purple-200">ห้อง ${studentData.room} | รหัส: ${studentId}</span>`;
-                
                 fetchCampaignsRealtime(); 
             } else {
-                Swal.fire({ icon: 'error', title: 'ไม่อนุญาตให้เข้าใช้งาน', text: `ไม่พบรหัสนักเรียน ${studentId} ในระบบ กรุณาติดต่อสภานักเรียน`, confirmButtonColor: '#d33' })
-                .then(() => { signOut(auth).then(() => window.location.href = "index.html"); });
+                Swal.fire({ icon: 'error', title: 'ไม่อนุญาตให้เข้าใช้งาน', text: `ไม่พบรหัสนักเรียน ${studentId} ในระบบ`, confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
             }
-        } catch (error) { 
-            Swal.fire('ข้อผิดพลาด', 'ระบบเซิร์ฟเวอร์ขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); 
-        }
+        } catch (error) { Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); }
     } else {
-        Swal.fire({ icon: 'error', title: 'อีเมลไม่ถูกต้อง', text: 'ระบบรองรับเฉพาะอีเมลนักเรียน @mst.ac.th เท่านั้น (ปีจบ+รหัส 5 หลัก)', confirmButtonColor: '#d33' })
-        .then(() => { signOut(auth).then(() => window.location.href = "index.html"); });
+        Swal.fire({ icon: 'error', title: 'อีเมลไม่ถูกต้อง', text: 'ระบบรองรับเฉพาะอีเมลนักเรียน @mst.ac.th เท่านั้น', confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
     }
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
-    Swal.fire({ title: 'ออกจากระบบ', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6b7280', confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก' })
-    .then((result) => { 
-        if (result.isConfirmed) { signOut(auth).then(() => window.location.href = "index.html"); } 
-    });
+    Swal.fire({ title: 'ออกจากระบบ', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6b7280', confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก' }).then((result) => { if (result.isConfirmed) signOut(auth).then(() => window.location.href = "index.html"); });
 });
 
-// ฟังก์ชันคัดกรองว่าเด็กคนนี้มีสิทธิ์โหวตในรายการนี้ไหม
 function isStudentEligible(campaignRules, studentInfo) {
-    if (!campaignRules) return true; // ถ้ารายการเก่าไม่มีกฎแปลว่าโหวตได้ทุกคน
-    
+    if (!campaignRules) return true; 
     const { type, values } = campaignRules;
     const stuLevel = (studentInfo.level || "").replace(/[mM]\./, 'ม.'); 
     const stuRoom = studentInfo.room || ""; 
@@ -61,13 +48,10 @@ function isStudentEligible(campaignRules, studentInfo) {
     if (type === "junior") return ["ม.1", "ม.2", "ม.3"].includes(stuLevel);
     if (type === "senior") return ["ม.4", "ม.5", "ม.6"].includes(stuLevel);
     if (type === "custom_level") return values.includes(stuLevel);
-    if (type === "custom_room") {
-        return values.some(val => val.replace(/\s/g, '') === stuRoom.replace(/\s/g, ''));
-    }
+    if (type === "custom_room") return values.some(val => val.replace(/\s/g, '') === stuRoom.replace(/\s/g, ''));
     return false;
 }
 
-// โหลดข้อมูลแคมเปญแบบ Real-time
 function fetchCampaignsRealtime() {
     const campaignList = document.getElementById("campaignList");
     const q = query(collection(db, "campaigns"), where("status", "==", "open"));
@@ -78,18 +62,15 @@ function fetchCampaignsRealtime() {
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // เช็คสิทธิ์ก่อนดึงมาแสดงผล
             if (isStudentEligible(data.allowed_voters, studentData)) {
                 newState += doc.id + data.status + (data.endTime || "");
                 tempCampaigns.push({ id: doc.id, ...data });
             }
         });
 
-        // ถ้าระบบมีการอัปเดตใหม่ ถึงจะรีโหลดหน้าจอเพื่อกันกระตุก
         if (newState !== currentCampaignState) {
             currentCampaignState = newState;
             allCampaigns = tempCampaigns;
-            
             const keyword = document.getElementById('searchInput').value.toLowerCase();
             if (keyword) {
                 renderCampaigns(allCampaigns.filter(camp => camp.title.toLowerCase().includes(keyword) || (camp.description && camp.description.toLowerCase().includes(keyword))));
@@ -97,12 +78,9 @@ function fetchCampaignsRealtime() {
                 renderCampaigns(allCampaigns);
             }
         }
-    }, (error) => { 
-        campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูลแบบเรียลไทม์</div>'; 
-    });
+    }, () => { campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>'; });
 }
 
-// วาดการ์ดตัวเลือก
 async function renderCampaigns(campaignsToRender) {
     const campaignList = document.getElementById("campaignList");
     campaignList.innerHTML = ""; 
@@ -135,7 +113,10 @@ async function renderCampaigns(campaignsToRender) {
 
         let optionsHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">`;
         data.options.forEach((opt, index) => {
-            const imgTag = opt.image ? `<img src="${opt.image}" onclick="viewImage(event, '${opt.image}', '${opt.name}')" class="w-32 h-32 sm:w-36 sm:h-36 object-cover rounded-xl mb-3 border-2 border-gray-100 shadow-sm hover:opacity-80 transition-opacity cursor-zoom-in relative z-10" onerror="this.style.display='none'">` : '';
+            // ระบบโหลดรูปภาพสำรอง ถ้ารูปลิงก์เสียหรือโหลดไม่ได้
+            const placeholder = "https://placehold.co/400x400/f3f4f6/a8a29e?text=No+Image";
+            const imgTag = opt.image ? `<img src="${opt.image}" onclick="viewImage(event, '${opt.image}', '${opt.name}')" class="w-32 h-32 sm:w-36 sm:h-36 object-cover rounded-xl mb-3 border-2 border-gray-100 shadow-sm hover:opacity-80 transition-opacity cursor-zoom-in relative z-10" onerror="this.onerror=null;this.src='${placeholder}';">` : '';
+            
             optionsHtml += `
                 <label class="cursor-pointer relative block ${isDisabled ? 'opacity-60 pointer-events-none' : ''}">
                     <input type="radio" name="vote_${campaignId}" value="${opt.name}" class="peer sr-only" ${isDisabled ? 'disabled' : ''}>
@@ -168,13 +149,11 @@ async function renderCampaigns(campaignsToRender) {
     }
 }
 
-// ดูรูปภาพขยายใหญ่
 window.viewImage = function(e, imageUrl, title) {
     e.preventDefault(); e.stopPropagation(); 
     Swal.fire({ title: title, imageUrl: imageUrl, imageAlt: title, showCloseButton: true, showConfirmButton: false, customClass: { image: 'rounded-xl object-contain max-h-[70vh]' } });
 }
 
-// นับเวลาถอยหลัง
 function startCountdown(campaignId, endTimeStr) {
     const end = new Date(endTimeStr).getTime();
     const interval = setInterval(() => {
@@ -183,7 +162,7 @@ function startCountdown(campaignId, endTimeStr) {
         
         if (distance < 0) {
             clearInterval(interval);
-            renderCampaigns(allCampaigns); // บังคับรีเฟรชหน้าเพื่อล็อกปุ่มตอนหมดเวลา
+            renderCampaigns(allCampaigns); 
             return;
         }
 
@@ -203,15 +182,12 @@ function startCountdown(campaignId, endTimeStr) {
     countdownIntervals.push(interval);
 }
 
-// ค้นหารายการโหวต
 document.getElementById('searchInput').addEventListener('input', (e) => {
     const keyword = e.target.value.toLowerCase();
     renderCampaigns(allCampaigns.filter(camp => camp.title.toLowerCase().includes(keyword) || (camp.description && camp.description.toLowerCase().includes(keyword))));
 });
 
-// บันทึกผลโหวต
 window.submitVote = async function(campaignId) {
-    // ป้องกันการแฮ็ก: เช็คเวลาปิดโหวตซ้ำอีกรอบก่อนส่งข้อมูล
     const campaignData = allCampaigns.find(c => c.id === campaignId);
     if (campaignData && campaignData.endTime && new Date().getTime() >= new Date(campaignData.endTime).getTime()) {
         Swal.fire({ icon: 'error', title: 'หมดเวลา', text: 'รายการนี้ปิดรับลงคะแนนไปแล้วครับ', confirmButtonColor: '#6b21a8' });
@@ -232,7 +208,14 @@ window.submitVote = async function(campaignId) {
                 const voterRef = doc(db, "campaigns", campaignId, "voters", currentUser.uid);
                 if ((await getDoc(voterRef)).exists()) { Swal.fire('ข้อผิดพลาด', 'ท่านได้ใช้สิทธิ์ในรายการนี้ไปแล้วครับ', 'error'); return; }
 
-                await setDoc(voterRef, { votedAt: serverTimestamp() });
+                await setDoc(voterRef, { 
+                    votedAt: serverTimestamp(),
+                    studentId: studentData.id,
+                    name: studentData.name,
+                    room: studentData.room,
+                    level: studentData.level
+                });
+                
                 await updateDoc(doc(db, "campaigns", campaignId), { [`votes_count.${voteValue}`]: increment(1) });
 
                 Swal.fire({ icon: 'success', title: 'ลงคะแนนสำเร็จ', html: `<p class="text-gray-600 mb-2">ขอบคุณที่ร่วมใช้สิทธิ์ลงคะแนนเสียง</p>`, confirmButtonColor: '#6b21a8', confirmButtonText: 'ปิดหน้าต่าง' }).then(() => {

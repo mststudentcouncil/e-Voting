@@ -9,7 +9,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
     <style> body { font-family: 'Anuphan', sans-serif; background-color: #f3f4f6; } </style>
 </head>
@@ -66,7 +65,6 @@
                             <option value="custom_level">ระบุชั้นปีเอง (เลือกได้หลายชั้น)</option>
                             <option value="custom_room">ระบุห้องเรียนเอง (เจาะจงห้อง)</option>
                         </select>
-                        
                         <div id="customLevelContainer" class="hidden mt-3 p-2 bg-white rounded border border-blue-100 flex flex-wrap gap-4 text-sm font-medium text-gray-700">
                             <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="targetLevel" value="ม.1" class="w-4 h-4 text-blue-600"> ม.1</label>
                             <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="targetLevel" value="ม.2" class="w-4 h-4 text-blue-600"> ม.2</label>
@@ -75,7 +73,6 @@
                             <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="targetLevel" value="ม.5" class="w-4 h-4 text-blue-600"> ม.5</label>
                             <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="targetLevel" value="ม.6" class="w-4 h-4 text-blue-600"> ม.6</label>
                         </div>
-
                         <div id="customRoomContainer" class="hidden mt-3">
                             <input type="text" id="customRoomInput" class="w-full border border-blue-200 rounded p-2 text-sm" placeholder="เช่น ม.1/1, ม.2/3, ม.6/1 (คั่นด้วยลูกน้ำ)">
                         </div>
@@ -90,7 +87,10 @@
                     </div>
                     
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <label class="block text-sm font-semibold text-gray-800 mb-3">รายชื่อผู้สมัคร / ตัวเลือก</label>
+                        <div class="flex justify-between items-end mb-3">
+                            <label class="block text-sm font-semibold text-gray-800">รายชื่อผู้สมัคร / ตัวเลือก</label>
+                            <span class="text-[10px] text-gray-500">รองรับลิงก์ Google Drive หรือลิงก์ภาพปกติ</span>
+                        </div>
                         <div id="optionsContainer" class="space-y-3">
                             <div class="option-group bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative">
                                 <input type="text" class="opt-name w-full border-b border-gray-200 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-medium" placeholder="รายชื่อหรือตัวเลือกที่ 1 (บังคับ)" required>
@@ -102,8 +102,7 @@
                             </div>
                         </div>
                         <button type="button" id="addOptionBtn" class="mt-3 w-full flex items-center justify-center gap-1 border border-dashed border-purple-300 text-purple-700 hover:bg-purple-100 font-medium py-2 rounded-lg transition-colors text-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            เพิ่มตัวเลือก
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> เพิ่มตัวเลือก
                         </button>
                     </div>
 
@@ -130,7 +129,11 @@
                         </button>
                         <button id="deleteStudentsBtn" class="bg-white border border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 rounded-md text-sm font-medium transition-colors">ลบทั้งหมด</button>
                     </div>
-                    <p class="text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100" id="lastUpdatedText">ข้อมูลในระบบ: <span class="font-bold text-blue-700" id="studentCount">กำลังโหลด...</span> คน</p>
+                    <p class="text-xs text-gray-600 bg-blue-50 p-3 rounded border border-blue-100 leading-relaxed" id="lastUpdatedText">กำลังโหลดข้อมูล...</p>
+                    
+                    <button id="viewDatabaseBtn" type="button" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 py-2.5 rounded-md text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg> ตรวจสอบข้อมูลและรายชื่อห้อง
+                    </button>
                 </div>
             </div>
         </div>
