@@ -3,14 +3,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// โค้ดตั้งค่าของคุณ
+// ใส่ค่า Config ใหม่ของคุณตรงนี้
 const firebaseConfig = {
-  apiKey: "AIzaSyCyvm0w7EX_Ef1mXG5YoOWGzYv2edACMwQ",
-  authDomain: "sc-smart-vote.firebaseapp.com",
-  projectId: "sc-smart-vote",
-  storageBucket: "sc-smart-vote.firebasestorage.app",
-  messagingSenderId: "183239411002",
-  appId: "1:183239411002:web:7d219c062605dec3bb3c03"
+  apiKey: "AIzaSyDg6LnmXjvARHw8yCMwREirjfVQ2vQrXEg",
+  authDomain: "sc-e-voting.firebaseapp.com",
+  projectId: "sc-e-voting",
+  storageBucket: "sc-e-voting.firebasestorage.app",
+  messagingSenderId: "206037022201",
+  appId: "1:206037022201:web:7f51638d387a2d03323928"
 };
 
 // เริ่มต้นใช้งาน Firebase

@@ -1,12 +1,11 @@
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 let currentUser = null;
 let studentData = null; 
 let allCampaigns = []; 
 let countdownIntervals = []; 
-let currentCampaignState = ""; 
 
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "index.html"; return; } 
@@ -24,11 +23,17 @@ onAuthStateChanged(auth, async (user) => {
                 studentData = studentDoc.data();
                 studentData.id = studentId; 
                 document.getElementById("userEmail").innerHTML = `${studentData.name} <br><span class="text-[10px] text-purple-200">ห้อง ${studentData.room} | รหัส: ${studentId}</span>`;
-                fetchCampaignsRealtime(); 
+                
+                // แก้ไข: เรียกชื่อฟังก์ชันให้ถูกต้อง
+                fetchCampaigns(); 
+                
             } else {
                 Swal.fire({ icon: 'error', title: 'ไม่อนุญาตให้เข้าใช้งาน', text: `ไม่พบรหัสนักเรียน ${studentId} ในระบบ`, confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
             }
-        } catch (error) { Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); }
+        } catch (error) { 
+            console.error("Auth Error:", error);
+            Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); 
+        }
     } else {
         Swal.fire({ icon: 'error', title: 'อีเมลไม่ถูกต้อง', text: 'ระบบรองรับเฉพาะอีเมลนักเรียน @mst.ac.th เท่านั้น', confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
     }
@@ -52,13 +57,12 @@ function isStudentEligible(campaignRules, studentInfo) {
     return false;
 }
 
-// เปลี่ยนจาก onSnapshot เป็น getDocs ดึงครั้งเดียวตอนโหลด
 async function fetchCampaigns() { 
     const campaignList = document.getElementById("campaignList");
     const q = query(collection(db, "campaigns"), where("status", "==", "open"));
 
     try {
-        const querySnapshot = await getDocs(q); // ดึงข้อมูลแค่รอบเดียว
+        const querySnapshot = await getDocs(q); 
         let tempCampaigns = [];
 
         querySnapshot.forEach((doc) => {
@@ -76,8 +80,8 @@ async function fetchCampaigns() {
             renderCampaigns(allCampaigns);
         }
     } catch (error) { 
-        console.error(error);
-        campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>'; 
+        console.error("Fetch Campaigns Error:", error);
+        campaignList.innerHTML = '<div class="bg-red-50 text-red-500 p-6 rounded-lg text-center border border-red-200">เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูลรายการโหวต</div>'; 
     }
 }
 
@@ -95,7 +99,6 @@ async function renderCampaigns(campaignsToRender) {
     for (const data of campaignsToRender) {
         const campaignId = data.id;
         
-        // ✨ แก้ไขจุดนี้: ตรวจสอบการโหวตจาก "รหัสนักเรียน (studentData.id)" แทน UID ของอีเมล
         const voterSnap = await getDoc(doc(db, "campaigns", campaignId, "voters", studentData.id));
         
         const now = new Date().getTime();
@@ -163,7 +166,7 @@ function startCountdown(campaignId, endTimeStr) {
         
         if (distance < 0) {
             clearInterval(interval);
-            renderCampaigns(allCampaigns); 
+            fetchCampaigns(); 
             return;
         }
 
@@ -192,7 +195,8 @@ window.submitVote = async function(campaignId) {
     const campaignData = allCampaigns.find(c => c.id === campaignId);
     if (campaignData && campaignData.endTime && new Date().getTime() >= new Date(campaignData.endTime).getTime()) {
         Swal.fire({ icon: 'error', title: 'หมดเวลา', text: 'รายการนี้ปิดรับลงคะแนนไปแล้วครับ', confirmButtonColor: '#6b21a8' });
-        renderCampaigns(allCampaigns); return;
+        fetchCampaigns(); 
+        return;
     }
 
     const selectedOption = document.querySelector(`input[name="vote_${campaignId}"]:checked`);
@@ -206,25 +210,27 @@ window.submitVote = async function(campaignId) {
         if (result.isConfirmed) {
             Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
             try {
-                // ✨ แก้ไขจุดนี้: บันทึกข้อมูลลงใน Document ที่ชื่อเป็น "รหัสนักเรียน"
                 const voterRef = doc(db, "campaigns", campaignId, "voters", studentData.id);
                 if ((await getDoc(voterRef)).exists()) { Swal.fire('ข้อผิดพลาด', 'ท่านได้ใช้สิทธิ์ในรายการนี้ไปแล้วครับ', 'error'); return; }
 
                 await setDoc(voterRef, { 
                     votedAt: serverTimestamp(),
-                    studentId: studentData.id, // เก็บเป็นหลักฐาน
+                    studentId: studentData.id, 
                     name: studentData.name,
                     room: studentData.room,
                     level: studentData.level,
-                    uidUsed: currentUser.uid // เก็บไว้ตรวจสอบได้ว่าใช้อีเมลไหนมาโหวต
+                    uidUsed: currentUser.uid 
                 });
                 
                 await updateDoc(doc(db, "campaigns", campaignId), { [`votes_count.${voteValue}`]: increment(1) });
 
                 Swal.fire({ icon: 'success', title: 'ลงคะแนนสำเร็จ', html: `<p class="text-gray-600 mb-2">ขอบคุณที่ร่วมใช้สิทธิ์ลงคะแนนเสียง</p>`, confirmButtonColor: '#6b21a8', confirmButtonText: 'ปิดหน้าต่าง' }).then(() => {
-                    currentCampaignState = ""; fetchCampaignsRealtime();
+                    fetchCampaigns(); 
                 });
-            } catch (error) { Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error'); }
+            } catch (error) { 
+                console.error("Submit Vote Error:", error);
+                Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error'); 
+            }
         }
     });
 }
