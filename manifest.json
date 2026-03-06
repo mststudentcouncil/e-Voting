@@ -8,14 +8,19 @@
   "theme_color": "#581c87",
   "icons": [
     {
-      "src": "https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png",
+      "src": "https://i.postimg.cc/rpc7TzZn/e-voting.jpg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png",
+      "src": "https://i.postimg.cc/rpc7TzZn/e-voting.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://i.postimg.cc/rpc7TzZn/e-voting.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg"
     }
   ]
 }

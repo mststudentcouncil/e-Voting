@@ -41,11 +41,12 @@
         // ถ้าเปิดผ่านแอปแล้ว ให้หยุดการทำงานโค้ดนี้ (ปล่อยให้เห็นหน้า Login ปกติ)
         if (isStandalone) return; 
 
-        // สร้างหน้าต่างบังคับเต็มจอ (Overlay)
+        // สร้างหน้าต่างบังคับเต็มจอ (Overlay) - อัปเดตรูป e-voting.jpg
         const overlay = document.createElement('div');
         overlay.className = "fixed inset-0 bg-purple-900/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center";
         overlay.innerHTML = `
-            <img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" class="w-24 h-24 mb-6 drop-shadow-lg rounded-full border-4 border-white/20">
+            <img src="https://i.postimg.cc/rpc7TzZn/e-voting.jpg" class="w-24 h-24 mb-6 drop-shadow-lg rounded-full border-4 border-white/20 object-cover">
+            
             <h2 class="text-2xl font-bold text-white mb-2">เข้าใช้งานผ่านแอปพลิเคชัน</h2>
             <p class="text-purple-200 mb-8 text-sm max-w-xs">เพื่อความเสถียรและรวดเร็ว กรุณาติดตั้งแอป MST e-Voting ลงบนเครื่องของท่านก่อนเข้าสู่ระบบ</p>
             
@@ -68,11 +69,13 @@
 
         document.getElementById('forceInstallBtn').addEventListener('click', async () => {
             if (deferredPrompt) {
+                // สำหรับมือถือ Android ที่รองรับการเด้งป๊อปอัปติดตั้ง
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
                 if (outcome === 'accepted') overlay.remove();
                 deferredPrompt = null;
-            } else if (isAppleDevice) {
+            } else if (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+                // สำหรับมือถือ/แท็บเล็ต Apple (iPhone, iPad)
                 Swal.fire({
                     title: 'วิธีติดตั้งบน iOS',
                     html: `
@@ -84,8 +87,23 @@
                     icon: 'info',
                     confirmButtonColor: '#6b21a8'
                 });
+            } else if (/Macintosh|MacIntel|Windows|Linux/.test(navigator.userAgent)) {
+                // ✅ เพิ่มใหม่: สำหรับคอมพิวเตอร์ PC, โน้ตบุ๊ก, MacBook
+                Swal.fire({
+                    title: 'การติดตั้งบนคอมพิวเตอร์',
+                    html: `
+                        <div class="text-left text-sm text-gray-600 mt-2">
+                            หากท่านใช้งานผ่าน <b>Google Chrome</b> หรือ <b>Edge</b>:<br><br>
+                            ให้มองหาไอคอน <b>"ดาวน์โหลด/ติดตั้งแอป"</b> <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> ที่บริเวณ <b>ขวาสุดของช่องพิมพ์ URL ด้านบน</b> แล้วคลิกติดตั้งได้เลยครับ<br><br>
+                            <span class="text-xs text-red-500">*หากไม่ต้องการติดตั้ง ท่านสามารถกดปุ่ม <b>"ใช้งานผ่านเว็บเบราว์เซอร์ชั่วคราว"</b> ด้านล่างเพื่อเข้าสู่ระบบได้ทันทีครับ</span>
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonColor: '#6b21a8'
+                });
             } else {
-                Swal.fire('คำแนะนำ', 'เบราว์เซอร์นี้ไม่รองรับการติดตั้งอัตโนมัติ กรุณากดเมนูจุด 3 จุด แล้วเลือก "เปิดในเบราว์เซอร์หลัก (Open in Browser)" ก่อนครับ', 'warning');
+                // สำหรับเคสอื่นๆ (เช่น เปิดจากแอปไลน์)
+                Swal.fire('คำแนะนำ', 'เบราว์เซอร์นี้ไม่รองรับการติดตั้งอัตโนมัติ กรุณากดเมนูจุด 3 จุด แล้วเลือก "เปิดในเบราว์เซอร์หลัก (Open in Browser)" ก่อนครับ หรือกดใช้งานผ่านเว็บชั่วคราวด้านล่าง', 'warning');
             }
         });
 
