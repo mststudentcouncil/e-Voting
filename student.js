@@ -28,14 +28,14 @@ onAuthStateChanged(auth, async (user) => {
                 fetchCampaigns(); 
                 
             } else {
-                Swal.fire({ icon: 'error', title: 'ไม่อนุญาตให้เข้าใช้งาน', text: `ไม่พบรหัสนักเรียน ${studentId} ในระบบ`, confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
+                Swal.fire({ icon: 'error', title: 'ไม่อนุญาตให้เข้าใช้งาน', text: `รหัสนักเรียน ${studentId} ไม่มีสิทธิ์เข้าใช้งานระบบ`, confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
             }
         } catch (error) { 
             console.error("Auth Error:", error);
             Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); 
         }
     } else {
-        Swal.fire({ icon: 'error', title: 'อีเมลไม่ถูกต้อง', text: 'ระบบรองรับเฉพาะอีเมลนักเรียน @mst.ac.th เท่านั้น', confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
+        Swal.fire({ icon: 'error', title: 'อีเมลไม่มีสิทธิ์ใช้งาน', text: 'ระบบรองรับเฉพาะอีเมลนักเรียน @mst.ac.th เท่านั้น', confirmButtonColor: '#d33' }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
     }
 });
 

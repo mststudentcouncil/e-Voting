@@ -68,42 +68,53 @@
         });
 
         document.getElementById('forceInstallBtn').addEventListener('click', async () => {
-            if (deferredPrompt) {
-                // สำหรับมือถือ Android ที่รองรับการเด้งป๊อปอัปติดตั้ง
+            // เซนเซอร์ตรวจจับแอปภายนอก (LINE, Facebook, Messenger, IG)
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isInAppBrowser = (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Line") > -1) || (ua.indexOf("Instagram") > -1);
+
+            if (isInAppBrowser) {
+                // 🚨 ถ้าเปิดผ่านเฟซบุ๊ก หรือ ไลน์ ให้เตือนไปเปิดเบราว์เซอร์หลักก่อน
+                Swal.fire({
+                    title: 'เปิดในเบราว์เซอร์หลัก',
+                    html: `แอปพลิเคชันที่คุณใช้อยู่ไม่รองรับการติดตั้งแอปครับ<br><br>กรุณากดเมนู <b>จุด 3 จุด</b> (มุมขวาบน หรือ ล่างขวา)<br>แล้วเลือก <b>"เปิดในเบราว์เซอร์"</b> หรือ <b>"เปิดใน Safari / Chrome"</b> ก่อนครับ`,
+                    icon: 'warning',
+                    confirmButtonColor: '#6b21a8'
+                });
+            } else if (deferredPrompt) {
+                // ✅ สำหรับ Android Chrome (รองรับการเด้งป๊อปอัปติดตั้งอัตโนมัติ 1-Click)
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
                 if (outcome === 'accepted') overlay.remove();
                 deferredPrompt = null;
             } else if (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
-                // สำหรับมือถือ/แท็บเล็ต Apple (iPhone, iPad)
+                // 🍎 สำหรับ Apple (iPhone, iPad) ที่เปิดผ่าน Safari แล้ว
                 Swal.fire({
                     title: 'วิธีติดตั้งบน iOS',
                     html: `
                         <div class="text-left text-sm text-gray-600 mt-2 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <b>1.</b> กดปุ่มแชร์ <svg class="w-5 h-5 inline text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> ตรงแถบเครื่องมือด้านล่าง<br><br>
-                            <b>2.</b> เลือกเมนู <b class="text-purple-700">"เพิ่มไปยังหน้าจอโฮม"</b>
+                            <b>1.</b> กดปุ่มแชร์ <svg class="w-5 h-5 inline text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> ตรงแถบเครื่องมือด้านล่างของจอ<br><br>
+                            <b>2.</b> เลือกเมนู <b class="text-purple-700">"เพิ่มไปยังหน้าจอโฮม"</b> <span class="text-xs text-gray-400">(Add to Home Screen)</span>
                         </div>
                     `,
                     icon: 'info',
                     confirmButtonColor: '#6b21a8'
                 });
             } else if (/Macintosh|MacIntel|Windows|Linux/.test(navigator.userAgent)) {
-                // ✅ เพิ่มใหม่: สำหรับคอมพิวเตอร์ PC, โน้ตบุ๊ก, MacBook
+                // 💻 สำหรับคอมพิวเตอร์
                 Swal.fire({
                     title: 'การติดตั้งบนคอมพิวเตอร์',
                     html: `
                         <div class="text-left text-sm text-gray-600 mt-2">
                             หากท่านใช้งานผ่าน <b>Google Chrome</b> หรือ <b>Edge</b>:<br><br>
                             ให้มองหาไอคอน <b>"ดาวน์โหลด/ติดตั้งแอป"</b> <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> ที่บริเวณ <b>ขวาสุดของช่องพิมพ์ URL ด้านบน</b> แล้วคลิกติดตั้งได้เลยครับ<br><br>
-                            <span class="text-xs text-red-500">*หากไม่ต้องการติดตั้ง ท่านสามารถกดปุ่ม <b>"ใช้งานผ่านเว็บเบราว์เซอร์ชั่วคราว"</b> ด้านล่างเพื่อเข้าสู่ระบบได้ทันทีครับ</span>
+                            <span class="text-xs text-red-500">*หากไม่ต้องการติดตั้ง ท่านสามารถกดปุ่ม "ใช้งานผ่านเว็บเบราว์เซอร์ชั่วคราว" ด้านล่างเพื่อเข้าสู่ระบบได้ทันทีครับ</span>
                         </div>
                     `,
                     icon: 'info',
                     confirmButtonColor: '#6b21a8'
                 });
             } else {
-                // สำหรับเคสอื่นๆ (เช่น เปิดจากแอปไลน์)
-                Swal.fire('คำแนะนำ', 'เบราว์เซอร์นี้ไม่รองรับการติดตั้งอัตโนมัติ กรุณากดเมนูจุด 3 จุด แล้วเลือก "เปิดในเบราว์เซอร์หลัก (Open in Browser)" ก่อนครับ หรือกดใช้งานผ่านเว็บชั่วคราวด้านล่าง', 'warning');
+                Swal.fire('คำแนะนำ', 'เบราว์เซอร์นี้ไม่รองรับการติดตั้งแอป กรุณากดใช้งานผ่านเว็บชั่วคราวด้านล่างครับ', 'warning');
             }
         });
 
