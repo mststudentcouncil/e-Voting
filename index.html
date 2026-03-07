@@ -8,10 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
-    <style> body { font-family: 'Anuphan', sans-serif; } </style>
-    <meta name="theme-color" content="#4c1d95">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style> 
+        /* บังคับให้พื้นหลังสุดของจอเป็นสีม่วงเข้ม เพื่อให้แถบด้านบนทะลุลงมาเจอสีม่วง */
+        html { background-color: #4c1d95; }
+        body { font-family: 'Anuphan', sans-serif; } 
+    </style>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#581c87">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
