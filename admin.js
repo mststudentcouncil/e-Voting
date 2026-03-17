@@ -6,8 +6,19 @@ window.liveResultListeners = {};
 window.globalStudents = []; 
 
 onAuthStateChanged(auth, (user) => {
-    if (!user) { window.location.href = "index.html"; } 
-    else { document.getElementById("adminEmail").innerText = `${user.email}`; checkStudentCount(); }
+    if (!user) { 
+        window.location.href = "index.html"; 
+    } 
+    // เพิ่มการเช็คอีเมลตรงนี้
+    else if (user.email !== "studentcouncil@mst.ac.th") {
+        Swal.fire('ปฏิเสธการเข้าถึง', 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้', 'error').then(() => {
+            window.location.href = "student.html";
+        });
+    } 
+    else { 
+        document.getElementById("adminEmail").innerText = `${user.email}`; 
+        checkStudentCount(); 
+    }
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {

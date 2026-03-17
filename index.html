@@ -8,6 +8,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
+    <script>
+        function checkInAppBrowser() {
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            // เช็คว่าเป็นแอปโซเชียลหรือไม่
+            var isInApp = (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || 
+                          (ua.indexOf("Instagram") > -1) || (ua.indexOf("Line") > -1) || 
+                          (ua.indexOf("LINE") > -1) || (ua.indexOf("TikTok") > -1);
+            
+            if(isInApp) {
+                document.write(`
+                    <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#faf5ff; z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:'Anuphan',sans-serif;">
+                        <svg style="width:80px; color:#6b21a8; margin-bottom:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        <h2 style="color:#6b21a8; font-weight:bold; margin-bottom:10px;">โปรดเปิดในเบราว์เซอร์หลัก</h2>
+                        <p style="color:#555; font-size:16px; margin-bottom:30px;">ระบบ e-Voting ไม่รองรับการเปิดผ่านแอป LINE, Facebook หรือ IG<br><br>กรุณากดที่เมนู <b>(จุด 3 จุด)</b> มุมขวาบน หรือ ล่างขวา<br>แล้วเลือก <b>"เปิดในเบราว์เซอร์" (Open in browser)</b></p>
+                        <button onclick="navigator.clipboard.writeText(window.location.href); alert('คัดลอกลิงก์แล้ว! นำไปเปิดใน Safari หรือ Chrome ได้เลย');" style="background:#6b21a8; color:white; border:none; padding:15px 30px; border-radius:30px; font-size:16px; font-weight:bold; box-shadow:0 4px 15px rgba(107,33,168,0.3);">📋 คัดลอกลิงก์เว็บไซต์</button>
+                    </div>
+                `);
+                document.close();
+                window.stop(); // หยุดการโหลดสคริปต์อื่นๆ ของหน้าเว็บทั้งหมด
+            }
+        }
+        checkInAppBrowser();
+    </script>
     <style> 
         /* บังคับให้พื้นหลังสุดของจอเป็นสีม่วงเข้ม เพื่อให้แถบด้านบนทะลุลงมาเจอสีม่วง */
         html { background-color: #6820a3; }
