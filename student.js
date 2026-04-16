@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where, serverTimestamp, FieldPath } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 let currentUser = null;
 let studentData = null; 
@@ -24,7 +24,6 @@ onAuthStateChanged(auth, async (user) => {
                 studentData.id = studentId; 
                 document.getElementById("userEmail").innerHTML = `${studentData.name} <br><span class="text-[10px] text-purple-200">ห้อง ${studentData.room} | รหัส: ${studentId}</span>`;
                 
-                // แก้ไข: เรียกชื่อฟังก์ชันให้ถูกต้อง
                 fetchCampaigns(); 
                 
             } else {
@@ -222,7 +221,8 @@ window.submitVote = async function(campaignId) {
                     uidUsed: currentUser.uid 
                 });
                 
-                await updateDoc(doc(db, "campaigns", campaignId), { [`votes_count.${voteValue}`]: increment(1) });
+                // ✅ ใช้ FieldPath เพื่ออุดช่องโหว่เรื่องเครื่องหมายจุดในชื่อผู้สมัคร
+                await updateDoc(doc(db, "campaigns", campaignId), new FieldPath("votes_count", voteValue), increment(1));
 
                 Swal.fire({ icon: 'success', title: 'ลงคะแนนสำเร็จ', html: `<p class="text-gray-600 mb-2">ขอบคุณที่ร่วมใช้สิทธิ์ลงคะแนนเสียง</p>`, confirmButtonColor: '#6b21a8', confirmButtonText: 'ปิดหน้าต่าง' }).then(() => {
                     fetchCampaigns(); 
