@@ -37,6 +37,77 @@ const addOptionBtn = document.getElementById("addOptionBtn");
 const cancelEditBtn = document.getElementById("cancelEditBtn");
 const formTitle = document.getElementById("formTitle");
 const submitCampaignBtn = document.getElementById("submitCampaignBtn");
+// เพิ่มการดักจับปุ่มเพิ่มแบบรัว
+const bulkAddBtn = document.getElementById("bulkAddBtn");
+if (bulkAddBtn) {
+    bulkAddBtn.addEventListener("click", () => {
+        Swal.fire({
+            title: 'นำเข้าข้อมูลจาก Google Sheets',
+            html: `
+                <div class="text-left">
+                    <p class="text-[11px] text-gray-500 mb-3">
+                        1. ใน Google Sheets ให้คลุมดำ 2 คอลัมน์ (A: ชื่อ, B: ลิงก์รูป)<br>
+                        2. กด Ctrl+C เพื่อคัดลอก<br>
+                        3. วาง (Ctrl+V) ลงในช่องด้านล่างนี้:
+                    </p>
+                    <textarea id="bulkPasteArea" class="w-full h-40 p-2 border border-gray-300 rounded-lg text-xs font-mono focus:ring-1 focus:ring-purple-600" placeholder="นายกอ ไก่ [Tab] https://...\nนายขอ ไข่ [Tab] https://..."></textarea>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'นำเข้าข้อมูล',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#6b21a8',
+            preConfirm: () => {
+                const text = document.getElementById("bulkPasteArea").value;
+                if (!text.trim()) {
+                    Swal.showValidationMessage('กรุณาวางข้อมูลที่คัดลอกมาด้วยครับ');
+                }
+                return text;
+            }
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                const lines = result.value.split('\n');
+                let addedCount = 0;
+
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    
+                    // แยกข้อมูลด้วย Tab (\t)
+                    const columns = line.split('\t');
+                    const name = columns[0] ? columns[0].trim() : "";
+                    const img = columns[1] ? columns[1].trim() : "";
+
+                    if (name) {
+                        const div = document.createElement("div");
+                        div.className = "option-group bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative mt-3";
+                        div.innerHTML = `
+                            <button type="button" class="absolute top-2 right-2 text-red-500 hover:text-red-700 remove-btn bg-red-50 p-1 rounded-md" title="ลบตัวเลือก">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                            <input type="text" class="opt-name w-full border-b border-gray-200 pb-1 mb-2 pr-8 focus:outline-none focus:border-purple-600 text-sm font-medium" value="${name}" required>
+                            <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none" value="${img}" placeholder="ลิงก์รูปภาพ (ไม่บังคับ)">
+                        `;
+                        optionsContainer.appendChild(div);
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    // ✅ โค้ดที่เพิ่มใหม่: ตรวจสอบและลบกล่องเริ่มต้นที่ยังว่างเปล่าทิ้งอัตโนมัติ
+                    const existingGroups = optionsContainer.querySelectorAll(".option-group");
+                    existingGroups.forEach(group => {
+                        const nameVal = group.querySelector(".opt-name").value.trim();
+                        if (nameVal === "") {
+                            group.remove();
+                        }
+                    });
+
+                    Swal.fire('สำเร็จ', `นำเข้าข้อมูลเรียบร้อยแล้ว ${addedCount} รายการ`, 'success');
+                }
+            }
+        });
+    });
+}
 
 addOptionBtn.addEventListener("click", () => {
     const div = document.createElement("div");
@@ -48,6 +119,7 @@ addOptionBtn.addEventListener("click", () => {
     `;
     optionsContainer.appendChild(div);
 });
+
 
 optionsContainer.addEventListener("click", (e) => {
     if (e.target.closest('.remove-btn')) { e.target.closest('.option-group').remove(); }
