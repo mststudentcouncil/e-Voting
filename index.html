@@ -4,6 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MST e-Voting - ระบบลงคะแนนออนไลน์</title>
+    <script>
+    function checkInAppBrowser() {
+        var ua = navigator.userAgent || navigator.vendor || window.opera;
+        var isInApp = (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || 
+                      (ua.indexOf("Instagram") > -1) || (ua.indexOf("Line") > -1) || 
+                      (ua.indexOf("LINE") > -1) || (ua.indexOf("TikTok") > -1);
+        
+        if(isInApp) {
+            // ลบเนื้อหาเดิมทั้งหมด แล้ววาดหน้าจอแจ้งเตือนทับลงไปบน Body โดยตรง
+            document.body.innerHTML = `
+                <div class="bg-purple-50 flex flex-col items-center justify-center min-h-screen p-6 text-center m-0 fixed inset-0 z-[999999]">
+                    <div class="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm flex flex-col items-center border border-purple-100">
+                        <div class="w-20 h-20 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mb-6">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        </div>
+                        
+                        <h2 class="text-2xl font-extrabold text-gray-800 mb-3 tracking-tight">โปรดเปิดในเบราว์เซอร์</h2>
+                        <p class="text-gray-500 mb-8 text-sm leading-relaxed">
+                            ระบบไม่รองรับการลงชื่อเข้าใช้ผ่านแอปภายนอก<br><br>
+                            กรุณากดที่เมนู <b>(จุด 3 จุด)</b> มุมขวาบนหรือล่าง<br>
+                            แล้วเลือก <b class="text-purple-700">"เปิดในเบราว์เซอร์"</b><br>
+                            (Open in browser)
+                        </p>
+                        
+                        <button onclick="navigator.clipboard.writeText(window.location.href); alert('คัดลอกลิงก์แล้ว! นำไปวางใน Safari หรือ Chrome ได้เลย');" class="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                            คัดลอกลิงก์เว็บไซต์
+                        </button>
+                    </div>
+                </div>
+            `;
+            // หยุดการทำงานของสคริปต์อื่นๆ ทันที
+            window.stop(); 
+        }
+    }
+    // เรียกใช้งานฟังก์ชันทันที
+    checkInAppBrowser();
+</script>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png">
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,8 +66,8 @@
 
     <div class="max-w-4xl mx-auto px-4 pt-12 pb-20 flex flex-col items-center text-center">
         <div class="animate-float mb-6">
-            <img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" alt="Logo" class="w-24 h-24 md:w-32 md:h-32 drop-shadow-2xl">
-        </div>
+    <img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" alt="Logo" class="w-24 h-24 md:w-32 md:h-32 rounded-full shadow-2xl object-cover bg-white">
+</div>
         
         <h1 class="text-3xl md:text-5xl font-black text-primary tracking-tight mb-4">
             MST e-Voting
@@ -52,7 +90,7 @@
 </button>
             
             <p class="mt-6 text-xs text-gray-400">
-                * หากปุ่มล็อกอินไม่ทำงาน กรุณาเปิดเว็บไซต์นี้ในเบราว์เซอร์
+                * ใช้บัญชีอีเมล Google ของโรงเรียนในการยืนยันตัวตน
             </p>
         </div>
 
@@ -108,36 +146,5 @@
 
     <script type="module" src="auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    // ฟังก์ชันตรวจจับ In-App Browser
-    function detectInAppBrowser() {
-        const ua = navigator.userAgent || navigator.vendor || window.opera;
-        
-        // ตรวจจับ LINE, Facebook, Instagram
-        const isInApp = (ua.indexOf("FBAN") > -1) || 
-                        (ua.indexOf("FBAV") > -1) || 
-                        (ua.indexOf("Line") > -1) ||
-                        (ua.indexOf("Instagram") > -1);
-
-        if (isInApp) {
-            // ซ่อนปุ่มล็อกอินเพื่อป้องกันการกดแล้วเออเร่อ
-            const loginBtn = document.getElementById('loginBtn');
-            if(loginBtn) loginBtn.style.display = 'none';
-
-            // แสดงหน้าต่างแจ้งเตือน
-            Swal.fire({
-                icon: 'warning',
-                title: 'โปรดเปิดในเบราว์เซอร์ปกติ',
-                html: 'ระบบไม่รองรับการล็อกอินผ่านแอปภายนอก เพื่อความปลอดภัยของบัญชี Google <br><br><b>วิธีแก้:</b> กดที่เมนูจุด 3 จุดมุมจอ แล้วเลือก <br><span class="text-purple-600 font-bold">"เปิดในเบราว์เซอร์ (Open in Browser)"</span>',
-                confirmButtonColor: '#6b21a8',
-                confirmButtonText: 'รับทราบ',
-                allowOutsideClick: false
-            });
-        }
-    }
-
-    // เรียกใช้งานเมื่อโหลดหน้าเว็บ
-    window.addEventListener('DOMContentLoaded', detectInAppBrowser);
-</script>
 </body>
 </html>
