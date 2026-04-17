@@ -24,11 +24,11 @@ onAuthStateChanged(auth, async (user) => {
                 studentData.id = studentId; 
                 document.getElementById("userEmail").innerHTML = `
                     <div class="font-bold text-sm tracking-wide text-white drop-shadow-md truncate">${studentData.name}</div>
-                    <div class="text-[11px] text-purple-200 mt-0.5">มัธยมศึกษาปีที่ ${studentData.room} | รหัสนักเรียน ${studentId}</div>
+                    <div class="text-[11px] text-purple-200 mt-0.5"> ห้อง ${studentData.room} | รหัส ${studentId}</div>
                 `;
                 fetchCampaigns(); 
             } else {
-                Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง', text: `ไม่พบรหัสนักเรียน ${studentId} ในฐานข้อมูล` }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
+                Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง', text: `ไม่พบรหัสนักเรียน ${studentId} ในฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ` }).then(() => signOut(auth).then(() => window.location.href = "index.html"));
             }
         } catch (error) { 
             Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง ไม่สามารถตรวจสอบรายชื่อได้', 'error'); 
