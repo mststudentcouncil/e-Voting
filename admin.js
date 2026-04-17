@@ -306,7 +306,7 @@ window.loadCampaigns = async function() {
                             ${timeInfo}
                             ${avatars}
                         </div>
-                        <div class="flex md:flex-col gap-2 shrink-0 md:w-32 justify-center mt-4 md:mt-0">
+                        <div class="flex md:flex-col gap-2 shrink-0 md:w-32 justify-center mt-0 md:mt-0">
                             <button onclick="viewResults('${data.id}')" class="w-full text-xs font-bold bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200">ผลคะแนน</button>
                             <button onclick="editCampaign('${data.id}')" class="w-full text-xs font-bold bg-yellow-50 text-yellow-700 py-2 rounded-lg hover:bg-yellow-100 border border-yellow-200">แก้ไข</button>
                             <button onclick="toggleStatus('${data.id}', '${data.status}')" class="w-full text-xs font-bold bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 border">${data.status==="open"?"ปิดระบบ":"เปิดระบบ"}</button>

@@ -170,13 +170,13 @@ async function renderCampaigns(campaignsToRender) {
         let buttonHtml = '';
         if (hasVoted) {
             const voteTime = voterSnap.data().votedAt ? voterSnap.data().votedAt.toDate().toLocaleString('th-TH') : "ไม่ระบุเวลา";
-            buttonHtml = `<div class="mt-5 bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><div><p class="text-sm font-bold text-green-800">ท่านใช้สิทธิ์เรียบร้อยแล้ว</p><p class="text-[10px] text-green-600">เมื่อ: ${voteTime}</p></div></div></div>`;
+            buttonHtml = `<div class="mt-1 bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><div><p class="text-sm font-bold text-green-800">ท่านใช้สิทธิ์เรียบร้อยแล้ว</p><p class="text-[10px] text-green-600">เมื่อ: ${voteTime}</p></div></div></div>`;
         }
-        else if (isExpired) buttonHtml = `<div class="mt-5 bg-gray-100 text-gray-500 font-bold py-3 px-4 rounded-xl text-center">หมดเวลาการลงคะแนน</div>`;
-        else if (isNotStarted) buttonHtml = `<div class="mt-5 bg-blue-50 text-blue-500 border border-blue-200 font-bold py-3 px-4 rounded-xl text-center">ยังไม่ถึงเวลาเปิดระบบ</div>`;
+        else if (isExpired) buttonHtml = `<div class="mt-1 bg-gray-100 text-gray-500 font-bold py-3 px-4 rounded-xl text-center">หมดเวลาการลงคะแนน</div>`;
+        else if (isNotStarted) buttonHtml = `<div class="mt-3 bg-blue-50 text-blue-500 border border-blue-200 font-bold py-3 px-4 rounded-xl text-center">ยังไม่ถึงเวลาลงคะแนน</div>`;
         else buttonHtml = `<button onclick="enterBooth('${campaignId}')" class="w-full mt-5 bg-purple-700 hover:bg-purple-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2 group">เข้าสู่คูหาลงคะแนน <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></button>`;
 
-        let avatars = '<div class="flex -space-x-3 mt-4">';
+        let avatars = '<div class="flex -space-x-3 mt-0">';
         data.options.forEach((o, i) => { 
             if(i<4) {
                 if (o.image) {
@@ -338,7 +338,7 @@ window.confirmVote = function() {
 
     Swal.fire({
         title: 'ยืนยันการลงคะแนน',
-        html: `${titleHtml}<br><br><div class="bg-yellow-50 text-yellow-700 p-3 rounded-xl text-xs font-bold border border-yellow-200">⚠️ โปรดตรวจสอบให้แน่ใจ หากยืนยันแล้วจะไม่สามารถกลับมาแก้ไขได้อีก</div>`,
+        html: `${titleHtml}<br><br><div class="bg-yellow-50 text-yellow-700 p-3 rounded-xl text-xs font-bold border border-yellow-200">โปรดตรวจสอบให้แน่ใจ หากยืนยันแล้วจะไม่สามารถกลับมาแก้ไขได้อีก</div>`,
         icon: 'question',
         showCancelButton: true, confirmButtonColor: '#6b21a8', cancelButtonColor: '#d1d5db',
         confirmButtonText: 'ยืนยันสิทธิ์', cancelButtonText: 'ยกเลิก',

@@ -23,7 +23,10 @@
         padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
     }
 }
-
+/* ป้องกันแถบด้านบนชนรอยบากกล้องมือถือ */
+.pt-safe {
+    padding-top: calc(1rem + env(safe-area-inset-top));
+}
     </style>
     <meta name="theme-color" content="#581c87">
 </head>
@@ -39,24 +42,29 @@
     </div>
 </div>
 
-    <header class="glass-header sticky top-0 z-50 shadow-lg text-white rounded-b-[2rem] pb-6 pt-4 px-6 mb-6">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="bg-white p-1 rounded-full shadow-md"><img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" class="w-10 h-10 object-contain"></div>
-                <div>
-                    <h1 class="font-extrabold text-lg leading-tight tracking-wide">MST e-Voting</h1>
-                    <p class="text-[10px] text-purple-200 uppercase tracking-widest font-medium">Student Portal</p>
+    <header class="glass-header sticky top-0 z-50 shadow-lg text-white rounded-b-3xl pb-4 pt-safe px-5 mb-5">
+        <div class="max-w-4xl mx-auto">
+            
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2.5">
+                    <img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" class="w-9 h-9 bg-white rounded-full p-0.5 shadow-sm object-cover">
+                    <div>
+                        <h1 class="font-extrabold text-base leading-tight tracking-wide">MST e-Voting</h1>
+                        <p class="text-[9px] text-purple-200 uppercase tracking-widest font-medium">Student Portal</p>
+                    </div>
                 </div>
+                <button id="logoutBtn" class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors backdrop-blur-sm">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
             </div>
-            <button id="logoutBtn" class="bg-white/20 hover:bg-white/30 p-2.5 rounded-full transition-colors backdrop-blur-sm">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            </button>
-        </div>
-        <div class="max-w-4xl mx-auto mt-6 bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-4">
-            <div class="w-12 h-12 bg-gradient-to-tr from-purple-400 to-pink-400 rounded-full flex items-center justify-center font-bold text-lg shadow-inner text-white border-2 border-white/30">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+
+            <div class="mt-3.5 bg-white/10 py-2.5 px-3.5 rounded-2xl border border-white/15 backdrop-blur-md flex items-center gap-3 shadow-sm">
+                <div class="w-9 h-9 bg-gradient-to-tr from-purple-400 to-pink-400 rounded-full flex items-center justify-center font-bold text-base shadow-inner text-white border border-white/30 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </div>
+                <div class="flex-1 overflow-hidden" id="userEmail">กำลังโหลดข้อมูลผู้ใช้...</div>
             </div>
-            <div class="flex-1 overflow-hidden" id="userEmail">กำลังโหลดข้อมูลผู้ใช้...</div>
+
         </div>
     </header>
 
@@ -101,7 +109,7 @@
         </div>
     </main>
 
-    <main id="view-receipt" class="max-w-md mx-auto px-4 hidden pt-10 pb-20">
+    <main id="view-receipt" class="max-w-md mx-auto px-4 hidden pt-1 pb-20">
         <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden relative fade-in" id="receiptCard">
             <div class="bg-gradient-to-br from-green-400 to-emerald-600 p-8 text-center text-white relative">
                 <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-green-500">
