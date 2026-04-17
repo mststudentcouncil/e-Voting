@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc, doc, getDoc, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc, doc, getDoc, deleteDoc, setDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 window.liveResultListeners = {};
 window.globalStudents = []; 
@@ -17,7 +17,7 @@ onAuthStateChanged(auth, (user) => {
 
 document.getElementById("logoutBtn")?.addEventListener("click", () => { signOut(auth).then(() => window.location.href = "index.html"); });
 
-// ================= ระบบแสดงฟอร์มเต็มจอ 2 คอลัมน์ =================
+// ================= ระบบแสดงฟอร์มเต็มจอ =================
 window.showCreateForm = function() {
     document.getElementById('campaignListView').classList.add('hidden');
     document.getElementById('campaignFormView').classList.remove('hidden');
@@ -105,6 +105,7 @@ document.getElementById("createCampaignForm")?.addEventListener("submit", async 
     const payload = { 
         title: document.getElementById("title").value, 
         description: document.getElementById("desc").value, 
+        startTime: document.getElementById("startTime").value || null,
         endTime: document.getElementById("endTime").value || null, 
         allowed_voters: { type: document.getElementById("voterTargetType").value, values: [] } 
     };
@@ -150,7 +151,8 @@ window.editCampaign = async function(campaignId) {
         showCreateForm();
         document.getElementById("editingId").value = campaignId;
         document.getElementById("title").value = data.title;
-        document.getElementById("desc").value = data.description;
+        document.getElementById("desc").value = data.description || "";
+        document.getElementById("startTime").value = data.startTime || "";
         document.getElementById("endTime").value = data.endTime || "";
         
         if(data.allowed_voters) {
@@ -189,7 +191,10 @@ window.loadCampaigns = async function() {
         if(document.getElementById("statActiveCampaigns")) document.getElementById("statActiveCampaigns").innerHTML = active;
         if(document.getElementById("statTotalCampaigns")) document.getElementById("statTotalCampaigns").innerHTML = allData.length;
 
-        const render = (dataList) => {
+        // อัปเดตกล่อง Dashboard สถานะล่าสุด
+        updateDashboardLiveStats(allData);
+
+                const render = (dataList) => {
             list.innerHTML = dataList.length ? "" : '<div class="text-center p-10 text-gray-500">ไม่พบรายการ</div>';
             dataList.forEach(data => {
                 let badge = `<span class="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded font-bold">ทุกคน</span>`;
@@ -197,9 +202,36 @@ window.loadCampaigns = async function() {
                 
                 let statusDot = data.status === "open" ? '<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block mr-1"></span>เปิดโหวต' : '<span class="w-2 h-2 rounded-full bg-gray-400 inline-block mr-1"></span>ปิดโหวต';
                 
+                // จัดรูปแบบวันที่
+                const formatTime = (timeStr) => {
+                    if(!timeStr) return "ไม่ระบุ";
+                    return new Date(timeStr).toLocaleString('th-TH', { 
+                        day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' 
+                    }) + " น.";
+                };
+                const timeInfo = `
+                    <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 w-fit">
+                        <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> <b>เริ่ม:</b> ${formatTime(data.startTime)}</div>
+                        <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> <b>สิ้นสุด:</b> ${formatTime(data.endTime)}</div>
+                    </div>
+                `;
+
+                // จัดการรูปภาพ
                 let avatars = '<div class="flex -space-x-3 mt-3">';
-                data.options.forEach((o, i) => { if(i<5) avatars += `<img src="${o.image || 'https://placehold.co/100/e2e8f0/64748b?text='+o.name.charAt(0)}" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm bg-white" title="${o.name}">`; });
-                if(data.options.length > 5) avatars += `<div class="w-10 h-10 rounded-full border-2 border-white bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold shadow-sm">+${data.options.length-5}</div>`;
+                data.options.forEach((o, i) => { 
+                    if(i < 5) {
+                        if (o.image) {
+                            avatars += `
+                            <div class="relative w-10 h-10 rounded-full border-2 border-white shadow-sm z-10 flex items-center justify-center bg-purple-50 text-purple-700 font-black text-sm overflow-hidden" title="${o.name}">
+                                <span>${i+1}</span>
+                                <img src="${o.image}" class="absolute inset-0 w-full h-full object-cover" onerror="this.style.display='none'">
+                            </div>`;
+                        } else {
+                            avatars += `<div class="relative w-10 h-10 rounded-full border-2 border-white shadow-sm z-10 flex items-center justify-center bg-purple-100 text-purple-700 font-black text-sm" title="${o.name}">${i+1}</div>`;
+                        }
+                    } 
+                });
+                if(data.options.length > 5) avatars += `<div class="relative w-10 h-10 rounded-full border-2 border-white bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold shadow-sm z-20">+${data.options.length-5}</div>`;
                 avatars += '</div>';
 
                 list.innerHTML += `
@@ -208,9 +240,10 @@ window.loadCampaigns = async function() {
                             <div class="flex items-center gap-2 mb-1">${badge} <span class="text-xs font-bold text-gray-500">${statusDot}</span></div>
                             <h3 class="font-extrabold text-lg text-gray-900">${data.title}</h3>
                             <p class="text-sm text-gray-500 truncate max-w-md">${data.description || 'ไม่มีคำอธิบาย'}</p>
+                            ${timeInfo}
                             ${avatars}
                         </div>
-                        <div class="flex md:flex-col gap-2 shrink-0 md:w-32 justify-center">
+                        <div class="flex md:flex-col gap-2 shrink-0 md:w-32 justify-center mt-4 md:mt-0">
                             <button onclick="viewResults('${data.id}')" class="w-full text-xs font-bold bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200">ผลคะแนน</button>
                             <button onclick="editCampaign('${data.id}')" class="w-full text-xs font-bold bg-yellow-50 text-yellow-700 py-2 rounded-lg hover:bg-yellow-100 border border-yellow-200">แก้ไข</button>
                             <button onclick="toggleStatus('${data.id}', '${data.status}')" class="w-full text-xs font-bold bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 border">${data.status==="open"?"ปิดระบบ":"เปิดระบบ"}</button>
@@ -221,11 +254,55 @@ window.loadCampaigns = async function() {
                 `;
             });
         };
+
         render(allData);
 
         const search = document.getElementById("adminSearchInput");
         if(search) search.addEventListener("input", (e) => render(allData.filter(c => c.title.toLowerCase().includes(e.target.value.toLowerCase()))));
     } catch (e) { }
+}
+
+async function updateDashboardLiveStats(campaigns) {
+    const statsContainer = document.getElementById("liveVotingStats");
+    if(!statsContainer) return;
+
+    let activeCamps = campaigns.filter(c => c.status === "open");
+    if(activeCamps.length === 0) {
+        statsContainer.innerHTML = '<div class="text-center p-4 text-gray-400 font-medium">ไม่มีรายการเลือกตั้งที่เปิดอยู่</div>';
+        return;
+    }
+
+    statsContainer.innerHTML = '';
+    for(const camp of activeCamps) {
+        let totalVoters = 0;
+        let eligibleCount = 0;
+        
+        // เช็คคนที่มีสิทธิ์
+        if(window.globalStudents && window.globalStudents.length > 0) {
+            eligibleCount = window.globalStudents.filter(s => isStudentEligible(camp.allowed_voters, s)).length;
+        }
+
+        // นับคะแนนทั้งหมดจาก votes_count
+        if (camp.votes_count) {
+            Object.values(camp.votes_count).forEach(count => {
+                if (typeof count === 'number') totalVoters += count;
+            });
+        }
+
+        let percent = eligibleCount > 0 ? Math.round((totalVoters / eligibleCount) * 100) : 0;
+        
+        statsContainer.innerHTML += `
+            <div class="mb-4 last:mb-0 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold text-gray-800 text-sm truncate pr-2">${camp.title}</span>
+                    <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">${totalVoters} / ${eligibleCount} คน</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2.5">
+                    <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2.5 rounded-full" style="width: ${percent}%"></div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 window.toggleStatus = async function(id, status) {
@@ -240,8 +317,7 @@ window.deleteCampaign = async function(id) {
     });
 }
 
-
-// ================= ระบบฐานข้อมูลนักเรียนและตาราง (แยกชั้น/แยกห้อง) =================
+// ... ส่วนนักเรียนคงเดิม ...
 async function checkStudentCount() {
     try { 
         const snapshot = await getDocs(collection(db, "students"));
@@ -253,20 +329,15 @@ async function checkStudentCount() {
         snapshot.forEach(docSnap => { 
             let d = docSnap.data(); 
             window.globalStudents.push({ id: docSnap.id, ...d }); 
-            
-            // สกัดข้อมูล "ชั้น"
             if(d.level) levels.add(d.level);
-            // สกัดข้อมูล "ห้อง" (เอามาเฉพาะตัวเลข)
             if(d.room) {
                 let rNum = d.room.includes('/') ? d.room.split('/')[1] : d.room.replace(/\D/g,'');
                 if(rNum) roomNums.add(rNum);
             }
-
             if (d.updated_at && (!lastUpdated || d.updated_at.toMillis() > lastUpdated.toMillis())) lastUpdated = d.updated_at;
         });
 
         if(document.getElementById("statTotalStudents")) document.getElementById("statTotalStudents").innerHTML = window.globalStudents.length;
-        
         let dateStr = "ยังไม่มีข้อมูล"; 
         if (lastUpdated) dateStr = lastUpdated.toDate().toLocaleString('th-TH');
         
@@ -274,30 +345,25 @@ async function checkStudentCount() {
             document.getElementById("lastUpdatedText").innerHTML = `มีนักเรียนในระบบ: <b class="text-indigo-600 text-lg">${window.globalStudents.length}</b> คน<br><span class="text-xs text-gray-500 mt-1 block">อัปเดตล่าสุด: ${dateStr}</span>`;
         }
         
-        // อัปเดต Dropdown เลือก "ชั้น"
         const levelFilter = document.getElementById("studentLevelFilter");
         if(levelFilter) {
             levelFilter.innerHTML = '<option value="all">ทุกระดับชั้น</option>';
-            Array.from(levels).sort().forEach(l => {
-                levelFilter.innerHTML += `<option value="${l}">ชั้น ${l}</option>`;
-            });
+            Array.from(levels).sort().forEach(l => { levelFilter.innerHTML += `<option value="${l}">ชั้น ${l}</option>`; });
         }
-
-        // อัปเดต Dropdown เลือก "ห้อง"
         const roomFilter = document.getElementById("studentRoomFilter");
         if(roomFilter) {
             roomFilter.innerHTML = '<option value="all">ทุกห้องเรียน</option>';
-            Array.from(roomNums).sort((a,b) => a - b).forEach(r => {
-                roomFilter.innerHTML += `<option value="${r}">ห้อง ${r}</option>`;
-            });
+            Array.from(roomNums).sort((a,b) => a - b).forEach(r => { roomFilter.innerHTML += `<option value="${r}">ห้อง ${r}</option>`; });
         }
-
         renderStudentTable();
+        loadCampaigns(); // โหลดใหม่เพื่อให้สถิติโหวตทำงาน
+        checkSystemHealth();
     } catch (e) { 
         if(document.getElementById("lastUpdatedText")) document.getElementById("lastUpdatedText").innerText = "โหลดข้อมูลผิดพลาด"; 
     }
 }
 
+// ... คงฟังก์ชัน Table และ Import ...
 window.renderStudentTable = function() {
     const tbody = document.getElementById("studentTableBody");
     if (!tbody || !window.globalStudents) return;
@@ -306,51 +372,38 @@ window.renderStudentTable = function() {
     let levelKw = document.getElementById("studentLevelFilter")?.value || "all";
     let roomKw = document.getElementById("studentRoomFilter")?.value || "all";
 
-    // กรองข้อมูลตามที่เลือก
     let filtered = window.globalStudents.filter(s => {
         let matchKw = s.id.includes(kw) || s.name.toLowerCase().includes(kw);
         let matchLevel = (levelKw === "all") || (s.level === levelKw);
-        
-        // ดึงแค่เลขห้องมาเทียบ
         let sRoomNum = s.room ? (s.room.includes('/') ? s.room.split('/')[1] : s.room.replace(/\D/g,'')) : "";
         let matchRoom = (roomKw === "all") || (sRoomNum === roomKw);
-
         return matchKw && matchLevel && matchRoom;
     }).sort((a, b) => a.id.localeCompare(b.id));
 
     let html = "";
     filtered.forEach(s => {
-        // แปลง ม.6/2 ให้แสดงผลแค่คำว่า "ห้อง 2"
         let displayRoom = s.room ? (s.room.includes('/') ? s.room.split('/')[1] : s.room.replace(/\D/g,'')) : "-";
-
         html += `<tr class="hover:bg-indigo-50/50 transition-colors group">
             <td class="p-4 border-b font-mono font-bold text-indigo-600">${s.id}</td>
             <td class="p-4 border-b text-gray-800 font-medium">${s.name}</td>
             <td class="p-4 border-b text-center text-gray-600">ชั้น ${s.level}</td>
             <td class="p-4 border-b text-center font-bold text-gray-700">ห้อง ${displayRoom}</td>
-            <td class="p-4 border-b text-center">
-                <button onclick="deleteSingleStudent('${s.id}')" class="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 shadow-sm">ลบ</button>
-            </td>
+            <td class="p-4 border-b text-center"><button onclick="deleteSingleStudent('${s.id}')" class="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 shadow-sm">ลบ</button></td>
         </tr>`;
     });
     tbody.innerHTML = filtered.length ? html : `<tr><td colspan="5" class="p-10 text-center text-gray-500 bg-gray-50 font-bold rounded-b-2xl">ไม่พบรายชื่อที่ค้นหา</td></tr>`;
 };
 
-// ดักจับเวลากดค้นหา หรือ เปลี่ยน Dropdown
 document.getElementById("studentSearchInput")?.addEventListener("input", renderStudentTable);
 document.getElementById("studentLevelFilter")?.addEventListener("change", renderStudentTable);
 document.getElementById("studentRoomFilter")?.addEventListener("change", renderStudentTable);
 
-
-// ================= ระบบเพิ่มนักเรียนทีละคน =================
 document.getElementById("addSingleStudentForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = document.getElementById("singleStuId").value.trim();
     const name = document.getElementById("singleStuName").value.trim();
     const level = document.getElementById("singleStuLevel").value;
     const roomNum = document.getElementById("singleStuRoom").value.trim();
-    
-    // แปลงข้อมูลให้ฐานข้อมูลเก็บเป็นรูปแบบ ม.6/2 (เพื่อรักษาระบบออกเอกสาร PDF)
     const levelNum = level.replace("ม.", "");
     const formattedRoom = `ม.${levelNum}/${roomNum}`;
     
@@ -365,13 +418,10 @@ document.getElementById("addSingleStudentForm")?.addEventListener("submit", asyn
 
 window.deleteSingleStudent = async function(id) {
     if(confirm(`ยืนยันการลบรหัสนักเรียน ${id} ใช่หรือไม่?`)) {
-        await deleteDoc(doc(db, "students", id));
-        checkStudentCount();
+        await deleteDoc(doc(db, "students", id)); checkStudentCount();
     }
 };
 
-
-// ================= นำเข้า Excel =================
 document.getElementById("importStudentsBtn")?.addEventListener("click", async () => {
     const file = document.getElementById("excelFileInput").files[0];
     if (!file) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ก่อน', 'warning');
@@ -393,10 +443,10 @@ document.getElementById("importStudentsBtn")?.addEventListener("click", async ()
                 rows.forEach(r => {
                     let roomMatchCell = r.find(c => typeof c==='string' && c.match(/\d+\s?\/\s?\d+/));
                     if(roomMatchCell) {
-                        let cleanRoom = roomMatchCell.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, ''); // "6/2"
+                        let cleanRoom = roomMatchCell.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, '');
                         let levelNum = cleanRoom.split('/')[0]; 
                         currentLevel = `ม.${levelNum}`; 
-                        currentRoom = `ม.${cleanRoom}`; // บังคับให้เก็บเป็นรูปแบบ ม.6/2 เท่านั้น
+                        currentRoom = `ม.${cleanRoom}`;
                     }
 
                     let idx = r.findIndex(c => /^\d{5}$/.test(c.toString().trim()));
@@ -406,18 +456,13 @@ document.getElementById("importStudentsBtn")?.addEventListener("click", async ()
                         
                         let inlineRoom = r.find(c => typeof c==='string' && c.match(/\d+\s?\/\s?\d+/)); 
                         if(inlineRoom) {
-                            let cleanInlineRoom = inlineRoom.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, ''); // "6/2"
+                            let cleanInlineRoom = inlineRoom.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, '');
                             currentLevel = `ม.${cleanInlineRoom.split('/')[0]}`;
                             currentRoom = `ม.${cleanInlineRoom}`;
                         }
                         
                         if(fn.length > 5) {
-                            all.push({ 
-                                id: r[idx].toString().trim(), 
-                                name: fn.replace(/['"]/g, ''), 
-                                room: currentRoom, 
-                                level: currentLevel 
-                            });
+                            all.push({ id: r[idx].toString().trim(), name: fn.replace(/['"]/g, ''), room: currentRoom, level: currentLevel });
                         }
                     }
                 });
@@ -450,7 +495,7 @@ document.getElementById("deleteStudentsBtn")?.addEventListener("click", () => {
     });
 });
 
-// ================= ระบบแสดงผลคะแนนรายห้อง และ ออกไฟล์ EXCEL/PDF =================
+// ================= ระบบแสดงผลและแก้บั๊ก "ชั้น อื่นๆ" =================
 function isStudentEligible(campaignRules, studentInfo) {
     if (!campaignRules) return true; 
     const { type, values } = campaignRules;
@@ -476,21 +521,32 @@ window.viewResults = async function(campaignId) {
             if (!docSnap.exists()) { resultDiv.innerHTML = '<div class="text-center text-red-500">ไม่พบข้อมูล</div>'; return; }
 
             const data = docSnap.data(); const votes = data.votes_count || {}; const title = data.title;
-            const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
-            let votedByRoom = {};
-            votersSnap.forEach(v => { let r = v.data().room || "ไม่ระบุ"; votedByRoom[r] = (votedByRoom[r] || 0) + 1; });
-
+            
+            // ใช้ Mapping จำระดับชั้นจากชื่อห้องโดยตรง แก้บั๊ก "อื่นๆ"
             let eligibleByRoom = {};
+            let levelOfRoomMapping = {};
             if(window.globalStudents) {
                 window.globalStudents.forEach(s => {
-                    if(isStudentEligible(data.allowed_voters, s)) { let r = s.room || "ไม่ระบุ"; eligibleByRoom[r] = (eligibleByRoom[r] || 0) + 1; }
+                    if(isStudentEligible(data.allowed_voters, s)) { 
+                        let r = s.room || "ไม่ระบุ"; 
+                        eligibleByRoom[r] = (eligibleByRoom[r] || 0) + 1; 
+                        levelOfRoomMapping[r] = s.level || "อื่นๆ";
+                    }
                 });
             }
+
+            const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
+            let votedByRoom = {};
+            votersSnap.forEach(v => { 
+                let r = v.data().room || "ไม่ระบุ"; 
+                votedByRoom[r] = (votedByRoom[r] || 0) + 1; 
+                if(v.data().level) levelOfRoomMapping[r] = v.data().level;
+            });
 
             let statsByLevel = {};
             let sortedRooms = Object.keys(eligibleByRoom).sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
             sortedRooms.forEach(r => {
-                let levelMatch = r.match(/ม\.(\d)/); let level = levelMatch ? `ม.${levelMatch[1]}` : 'อื่นๆ';
+                let level = levelOfRoomMapping[r] || 'อื่นๆ';
                 if(!statsByLevel[level]) statsByLevel[level] = [];
                 statsByLevel[level].push(r);
             });
@@ -541,7 +597,6 @@ window.viewResults = async function(campaignId) {
                         let eligible = eligibleByRoom[r]; let voted = votedByRoom[r] || 0;
                         let pct = eligible > 0 ? Math.round((voted/eligible)*100) : 0;
                         let pctColor = pct === 100 ? 'text-green-600' : (pct >= 50 ? 'text-blue-600' : 'text-red-500');
-                        // เปลี่ยนการแสดงผลให้เป็น "ห้อง 2"
                         let cleanRoomForDisplay = r.includes('/') ? "ห้อง " + r.split('/')[1] : r;
                         resultHtml += `<tr class="hover:bg-gray-50"><td class="p-3 border-b font-bold text-gray-700">${cleanRoomForDisplay}</td><td class="p-3 border-b text-center">${eligible}</td><td class="p-3 border-b text-center font-black text-gray-900">${voted}</td><td class="p-3 border-b text-center font-bold ${pctColor}">${pct}%</td></tr>`;
                     });
@@ -590,14 +645,24 @@ window.exportExcel = async function(campaignId) {
             summaryData.push(["", "", ""]); summaryData.push(["รวมผู้ใช้สิทธิ์ทั้งหมด", totalVotes, "100%"]);
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "สรุปผลโหวต");
 
-            const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
-            let votedByRoom = {}; votersSnap.forEach(v => { let r = v.data().room || "ไม่ระบุ"; votedByRoom[r] = (votedByRoom[r] || 0) + 1; });
-            let eligibleByRoom = {};
-            if(window.globalStudents) { window.globalStudents.forEach(s => { if(isStudentEligible(data.allowed_voters, s)) { let r = s.room || "ไม่ระบุ"; eligibleByRoom[r] = (eligibleByRoom[r] || 0) + 1; } }); }
+            let eligibleByRoom = {}; let levelOfRoomMapping = {};
+            if(window.globalStudents) { 
+                window.globalStudents.forEach(s => { 
+                    if(isStudentEligible(data.allowed_voters, s)) { 
+                        let r = s.room || "ไม่ระบุ"; eligibleByRoom[r] = (eligibleByRoom[r] || 0) + 1; levelOfRoomMapping[r] = s.level || "อื่นๆ";
+                    } 
+                }); 
+            }
 
+            const votersSnap = await getDocs(collection(db, "campaigns", campaignId, "voters"));
+            let votedByRoom = {}; votersSnap.forEach(v => { 
+                let r = v.data().room || "ไม่ระบุ"; votedByRoom[r] = (votedByRoom[r] || 0) + 1; 
+                if(v.data().level) levelOfRoomMapping[r] = v.data().level;
+            });
+            
             let statsByLevel = {};
             let sortedRooms = Object.keys(eligibleByRoom).sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
-            sortedRooms.forEach(r => { let levelMatch = r.match(/ม\.(\d)/); let level = levelMatch ? `ม.${levelMatch[1]}` : 'อื่นๆ'; if(!statsByLevel[level]) statsByLevel[level] = []; statsByLevel[level].push(r); });
+            sortedRooms.forEach(r => { let level = levelOfRoomMapping[r] || 'อื่นๆ'; if(!statsByLevel[level]) statsByLevel[level] = []; statsByLevel[level].push(r); });
 
             let levels = Object.keys(statsByLevel).sort();
             levels.forEach(level => {
@@ -634,5 +699,68 @@ window.viewImage = function(e, imageUrl, title) {
     e.preventDefault(); e.stopPropagation();
     Swal.fire({ title: title, imageUrl: imageUrl, imageAlt: title, showCloseButton: true, showConfirmButton: false, customClass: { image: 'rounded-xl object-contain max-h-[70vh]' } });
 }
+// ... โค้ดด้านบนคงเดิม ...
 
-loadCampaigns();
+// เพิ่มฟังก์ชันตรวจสอบสถานะเซิร์ฟเวอร์
+async function checkSystemHealth() {
+    const statusEl = document.getElementById("systemHealthStatus");
+    const msgEl = document.getElementById("systemHealthMsg");
+    const iconEl = document.getElementById("systemHealthIcon");
+    
+    if (!statusEl || !msgEl) return;
+
+    if (!navigator.onLine) {
+        statusEl.innerHTML = `<span class="w-3 h-3 rounded-full bg-red-500"></span><span class="font-bold text-red-600">ออฟไลน์</span>`;
+        msgEl.innerText = "คุณไม่ได้เชื่อมต่ออินเทอร์เน็ต";
+        msgEl.className = "text-[11px] font-bold text-red-500 mt-2";
+        return;
+    }
+
+        try {
+        // จับเวลาดึงข้อมูล 1 Document เพื่อดู Latency
+        const startTime = Date.now();
+        
+        // แก้ไขตรงนี้: ใช้ limit(1) เพื่อให้ดึงข้อมูลมาแค่ 1 รายการ จะได้เสียโควตาแค่ 1 Read
+        const testQuery = query(collection(db, "campaigns"), limit(1));
+        await getDocs(testQuery);
+        
+        const latency = Date.now() - startTime;
+
+        const totalStudents = window.globalStudents ? window.globalStudents.length : 0;
+        
+        let healthColor, healthText, healthMsg, iconClass;
+
+        if (totalStudents > 4000) {
+            healthColor = "text-orange-600";
+            healthText = "มีความเสี่ยง (โควตาฟรี)";
+            healthMsg = `ผู้ใช้ ${totalStudents} คน อาจทำให้ทะลุลิมิตอ่าน 50k ครั้ง/วัน หากเข้าพร้อมกัน`;
+            iconClass = "bg-orange-50 border-orange-100";
+            statusEl.innerHTML = `<span class="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></span><span class="font-bold text-orange-600 text-sm">เสี่ยง (Load)</span>`;
+        } else if (latency > 2000) {
+            healthColor = "text-yellow-600";
+            healthText = "เซิร์ฟเวอร์ตอบสนองช้า";
+            healthMsg = `ความหน่วง ${latency}ms (อาจเกิดจากเน็ตหรือเครื่องแอดมิน)`;
+            iconClass = "bg-yellow-50 border-yellow-100";
+            statusEl.innerHTML = `<span class="w-3 h-3 rounded-full bg-yellow-500"></span><span class="font-bold text-yellow-600">ล่าช้า (${latency}ms)</span>`;
+        } else {
+            healthColor = "text-green-600";
+            healthText = "ปกติ (เสถียร)";
+            healthMsg = `ความหน่วง ${latency}ms | รองรับผู้ใช้ปัจจุบันได้สบาย`;
+            iconClass = "bg-green-50 border-green-100";
+            statusEl.innerHTML = `<span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span><span class="font-bold text-green-600">ปกติ (เสถียร)</span>`;
+        }
+
+        msgEl.innerText = healthMsg;
+        msgEl.className = `text-[11px] font-medium ${healthColor} mt-2`;
+        iconEl.className = `p-2 rounded-lg border ${iconClass}`;
+        iconEl.innerHTML = `<svg class="w-6 h-6 ${healthColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>`;
+
+    } catch (e) {
+        statusEl.innerHTML = `<span class="w-3 h-3 rounded-full bg-red-500"></span><span class="font-bold text-red-600">เชื่อมต่อล้มเหลว</span>`;
+        msgEl.innerText = "ไม่สามารถเชื่อมต่อฐานข้อมูล Firebase ได้";
+        msgEl.className = "text-[11px] font-bold text-red-500 mt-2";
+    }
+}
+
+// เปลี่ยนความถี่เป็นเช็กทุกๆ 1 นาที (60,000 มิลลิวินาที) แทน 30 วินาที เพื่อประหยัดโควตา 
+setInterval(checkSystemHealth, 60000);

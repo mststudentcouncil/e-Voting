@@ -6,8 +6,8 @@ let currentUser = null;
 let studentData = null; 
 let allCampaigns = []; 
 let countdownIntervals = []; 
-let currentBoothData = null; // เก็บข้อมูลการเลือกตั้งที่กำลังโหวต
-let userSelectedOption = null; // เก็บเบอร์ที่เลือก
+let currentBoothData = null; 
+let userSelectedOption = null; 
 
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "index.html"; return; } 
@@ -72,6 +72,18 @@ async function fetchCampaigns() {
     }
 }
 
+function getTargetGroupText(allowedVoters) {
+    if (!allowedVoters || allowedVoters.type === "all") return "นักเรียนทุกคน";
+    const type = allowedVoters.type;
+    const values = allowedVoters.values || [];
+    
+    if (type === "junior") return "เฉพาะมัธยมศึกษาตอนต้น (ม.1 - ม.3)";
+    if (type === "senior") return "เฉพาะมัธยมศึกษาตอนปลาย (ม.4 - ม.6)";
+    if (type === "custom_level") return "เฉพาะชั้น " + values.join(", ");
+    if (type === "custom_room") return "เฉพาะห้อง " + values.join(", ");
+    return "กลุ่มเฉพาะ";
+}
+
 async function renderCampaigns(campaignsToRender) {
     const list = document.getElementById("campaignList");
     list.innerHTML = ""; 
@@ -87,11 +99,18 @@ async function renderCampaigns(campaignsToRender) {
         const voterSnap = await getDoc(doc(db, "campaigns", campaignId, "voters", studentData.id));
         
         const now = new Date().getTime();
-        const isExpired = data.endTime && now >= new Date(data.endTime).getTime();
+        const startTimestamp = data.startTime ? new Date(data.startTime).getTime() : 0;
+        const endTimestamp = data.endTime ? new Date(data.endTime).getTime() : Infinity;
+
+        const isExpired = now >= endTimestamp;
+        const isNotStarted = startTimestamp > 0 && now < startTimestamp;
         const hasVoted = voterSnap.exists();
         
         let timeBadge = '';
-        if (data.endTime && !isExpired && !hasVoted) {
+        if (isNotStarted) {
+            timeBadge = `<div class="text-xs font-bold text-blue-600 bg-blue-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg mb-4"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> เปิดให้โหวตในอีก: <span id="timer-${campaignId}">กำลังคำนวณ...</span></div>`;
+            startCountdown(campaignId, data.startTime); 
+        } else if (!isExpired && !hasVoted && data.endTime) {
             timeBadge = `<div class="text-xs font-bold text-pink-600 bg-pink-50 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg mb-4"><span class="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span> ปิดรับโหวตใน: <span id="timer-${campaignId}">กำลังคำนวณ...</span></div>`;
             startCountdown(campaignId, data.endTime); 
         }
@@ -102,20 +121,40 @@ async function renderCampaigns(campaignsToRender) {
             buttonHtml = `<div class="mt-5 bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div><div><p class="text-sm font-bold text-green-800">ท่านใช้สิทธิ์เรียบร้อยแล้ว</p><p class="text-[10px] text-green-600">เมื่อ: ${voteTime}</p></div></div></div>`;
         }
         else if (isExpired) buttonHtml = `<div class="mt-5 bg-gray-100 text-gray-500 font-bold py-3 px-4 rounded-xl text-center">หมดเวลาการลงคะแนน</div>`;
+        else if (isNotStarted) buttonHtml = `<div class="mt-5 bg-blue-50 text-blue-500 border border-blue-200 font-bold py-3 px-4 rounded-xl text-center">ยังไม่ถึงเวลาเปิดระบบ</div>`;
         else buttonHtml = `<button onclick="enterBooth('${campaignId}')" class="w-full mt-5 bg-purple-700 hover:bg-purple-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2 group">เข้าสู่คูหาลงคะแนน <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></button>`;
 
         let avatars = '<div class="flex -space-x-3 mt-4">';
-        data.options.forEach((o, i) => { if(i<4) avatars += `<img src="${o.image || 'https://placehold.co/100/e2e8f0/64748b?text=Image'}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm bg-white">`; });
-        if(data.options.length > 4) avatars += `<div class="w-12 h-12 rounded-full border-2 border-white bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold shadow-sm">+${data.options.length-4}</div>`;
+        data.options.forEach((o, i) => { 
+            if(i<4) {
+                if (o.image) {
+                    avatars += `<img src="${o.image}" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm bg-white" onerror="this.style.display='none'">`;
+                } else {
+                    avatars += `<div class="w-12 h-12 rounded-full border-2 border-white bg-purple-100 text-purple-700 font-black text-sm flex items-center justify-center z-10 relative">${i+1}</div>`;
+                }
+            } 
+        });
+        if(data.options.length > 4) avatars += `<div class="w-12 h-12 rounded-full border-2 border-white bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold shadow-sm z-20 relative">+${data.options.length-4}</div>`;
         avatars += '</div>';
+
+        // --- ส่วนที่คุณถามมา จะอยู่ตรงนี้ (รวมอยู่ใน Card HTML เรียบร้อยแล้ว) ---
+        const targetText = getTargetGroupText(data.allowed_voters);
+        
+        const targetBadge = `
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full w-fit mb-3">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                ผู้มีสิทธิ์: ${targetText}
+            </div>
+        `;
 
         const card = document.createElement("div");
         card.className = `bg-white p-6 rounded-3xl shadow-sm border border-gray-100 fade-in ${hasVoted ? 'opacity-80' : ''}`;
         card.innerHTML = `
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex-1">
+                    ${targetBadge} 
                     <h3 class="text-xl font-extrabold text-gray-900 mb-1 leading-tight">${data.title}</h3>
-                    <p class="text-gray-500 text-sm mb-3 line-clamp-2">${data.description || 'การเลือกตั้งคณะกรรมการนักเรียน'}</p>
+                    <p class="text-gray-500 text-sm mb-3 line-clamp-2">${data.description || ''}</p>
                     ${timeBadge}
                     ${!hasVoted && !isExpired ? avatars : ''}
                 </div>
@@ -123,11 +162,13 @@ async function renderCampaigns(campaignsToRender) {
             ${buttonHtml}
         `;
         list.appendChild(card);
+        // ------------------------------------------------------------------
     }
 }
 
-function startCountdown(campaignId, endTimeStr) {
-    const end = new Date(endTimeStr).getTime();
+
+function startCountdown(campaignId, targetTimeStr) {
+    const end = new Date(targetTimeStr).getTime();
     const interval = setInterval(() => {
         const now = new Date().getTime(); const distance = end - now;
         if (distance < 0) { clearInterval(interval); fetchCampaigns(); return; }
@@ -148,7 +189,7 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     renderCampaigns(allCampaigns.filter(c => c.title.toLowerCase().includes(kw) || (c.description && c.description.toLowerCase().includes(kw))));
 });
 
-// ================= ระบบคูหาลงคะแนน (Virtual Booth) =================
+// ================= ระบบคูหาลงคะแนน (Virtual Booth) เปลี่ยนรูปเป็นเบอร์/กากบาท =================
 window.enterBooth = function(campaignId) {
     currentBoothData = allCampaigns.find(c => c.id === campaignId);
     userSelectedOption = null;
@@ -158,25 +199,35 @@ window.enterBooth = function(campaignId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     document.getElementById("boothCampaignTitle").innerText = currentBoothData.title;
-    document.getElementById("boothCampaignDesc").innerText = currentBoothData.description || 'โปรดเลือกผู้สมัครที่คุณต้องการเพียง 1 หมายเลข';
-    document.getElementById("stickySubmitBar").classList.add("translate-y-full"); // ซ่อนปุ่มยืนยันก่อน
+    document.getElementById("boothCampaignDesc").innerText = currentBoothData.description || 'โปรดเลือกหมายเลขที่คุณต้องการเพียง 1 หมายเลข';
+    document.getElementById("stickySubmitBar").classList.add("translate-y-full");
     document.getElementById("selectedCandidateName").innerText = "-";
 
     const grid = document.getElementById("candidatesGrid");
     grid.innerHTML = "";
 
-    // เติมปุ่ม "ไม่ประสงค์ลงคะแนน" อัตโนมัติในตอนท้าย
     let displayOptions = [...currentBoothData.options];
     displayOptions.push({ name: "ไม่ประสงค์ลงคะแนน", image: null, isNoVote: true });
 
     displayOptions.forEach((opt, index) => {
         const isNoVote = opt.isNoVote === true;
-        const numberLabel = isNoVote ? '' : `<div class="absolute top-0 left-0 bg-purple-700 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-2xl text-sm shadow-md z-10">เบอร์ ${index + 1}</div>`;
+        const numberLabel = isNoVote ? '' : `<div class="absolute top-0 left-0 bg-purple-700 text-white font-bold px-4 py-1.5 rounded-br-2xl rounded-tl-2xl text-sm shadow-md z-20">เบอร์ ${index + 1}</div>`;
         
-        const defaultImg = isNoVote ? 'https://i.postimg.cc/85z1Dk9n/novote.png' : 'https://placehold.co/400x400/f3f4f6/a8a29e?text=No+Image';
-        const imgSrc = opt.image || defaultImg;
+        let visualContent = '';
+        if (isNoVote) {
+            visualContent = `<div class="w-full h-full flex items-center justify-center bg-red-50 text-red-500 rounded-full border-4 border-gray-50 shadow-inner"><svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M6 18L18 6M6 6l12 12"></path></svg></div>`;
+        } else if (opt.image) {
+            // ถ้ามีรูป แต่โหลดไม่ได้ ก็จะซ่อนรูปแล้วให้เห็นเบอร์พื้นหลังแทน
+            visualContent = `<div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-gray-50 overflow-hidden shadow-inner relative bg-purple-50 flex items-center justify-center text-purple-300 font-black text-5xl">
+                <span>${index + 1}</span>
+                <img src="${opt.image}" class="w-full h-full object-cover absolute top-0 left-0 z-10" onerror="this.style.display='none'">
+            </div>`;
+        } else {
+            // ถ้าไม่ได้ใส่ลิงก์รูปมาแต่แรก ให้แสดงเบอร์เด่นๆ
+            visualContent = `<div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-purple-100 overflow-hidden shadow-inner bg-purple-50 flex items-center justify-center text-purple-700 font-black text-[3.5rem]">${index + 1}</div>`;
+        }
         
-        const policyBtn = isNoVote ? '' : `<button onclick="event.stopPropagation(); showPolicy('${opt.name}', '${imgSrc}')" class="w-full mt-4 bg-gray-100 hover:bg-purple-100 text-purple-700 text-xs font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-1 border border-gray-200"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> ดูประวัติ/นโยบาย</button>`;
+        const policyBtn = isNoVote ? '' : `<button onclick="event.stopPropagation(); showPolicy('${opt.name}', '${opt.image || ''}')" class="w-full mt-4 bg-gray-100 hover:bg-purple-100 text-purple-700 text-xs font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-1 border border-gray-200"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> รายละเอียดเพิ่มเติม</button>`;
 
         const titleClass = isNoVote ? "text-red-500 font-extrabold mt-4" : "text-gray-900 font-bold mt-2";
 
@@ -184,12 +235,10 @@ window.enterBooth = function(campaignId) {
             <div class="candidate-card bg-white rounded-3xl p-4 shadow-sm relative cursor-pointer flex flex-col items-center text-center fade-in" 
                  onclick="selectOption(this, '${opt.name}')" style="animation-delay: ${index * 0.05}s">
                 ${numberLabel}
-                <div class="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center check-circle transition-colors z-10 bg-white">
+                <div class="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center check-circle transition-colors z-20 bg-white">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-gray-50 overflow-hidden mt-4 shadow-inner">
-                    <img src="${imgSrc}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='${defaultImg}';">
-                </div>
+                <div class="mt-4">${visualContent}</div>
                 <div class="mt-4 w-full flex-1 flex flex-col justify-between">
                     <h3 class="text-base leading-snug ${titleClass}">${opt.name}</h3>
                     ${policyBtn}
@@ -210,8 +259,6 @@ window.selectOption = function(element, optName) {
     document.querySelectorAll(".candidate-card").forEach(el => el.classList.remove("selected"));
     element.classList.add("selected");
     userSelectedOption = optName;
-
-    // อัปเดตแถบด้านล่างและเด้งขึ้นมา
     document.getElementById("selectedCandidateName").innerText = optName;
     document.getElementById("stickySubmitBar").classList.remove("translate-y-full");
 }
@@ -219,8 +266,8 @@ window.selectOption = function(element, optName) {
 window.showPolicy = function(name, imageUrl) {
     Swal.fire({
         title: name,
-        html: `<p class="text-sm text-gray-500 mb-4">วิสัยทัศน์และนโยบายผู้สมัคร</p>`,
-        imageUrl: imageUrl,
+        html: `<p class="text-sm text-gray-500 mb-4">คลิกพื้นที่ว่างเพื่อปิดหน้าต่าง</p>`,
+        imageUrl: imageUrl || null,
         imageAlt: name,
         showCloseButton: true,
         showConfirmButton: false,
@@ -271,12 +318,9 @@ async function submitFinalVote() {
             uidUsed: currentUser.uid 
         });
         
-        // อุดช่องโหว่เรื่องจุดด้วย FieldPath
         await updateDoc(doc(db, "campaigns", campaignId), new FieldPath("votes_count", voteValue), increment(1));
 
         Swal.close();
-        
-        // ไปหน้าใบเสร็จ
         showReceipt(currentBoothData.title, studentData.name);
         
     } catch (error) { 
@@ -291,7 +335,6 @@ function showReceipt(campaignName, voterName) {
     document.getElementById("stickySubmitBar").classList.add("translate-y-full");
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // สร้างรหัสอ้างอิงและวันที่
     const refId = "MST-" + Math.random().toString(36).substr(2, 8).toUpperCase();
     const now = new Date();
     const timeStr = now.toLocaleDateString('th-TH') + " " + now.toLocaleTimeString('th-TH') + " น.";
