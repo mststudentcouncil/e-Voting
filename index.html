@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <script>
+<script>
     function checkInAppBrowser() {
         var ua = navigator.userAgent || navigator.vendor || window.opera;
         var isInApp = (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || 
@@ -9,8 +9,7 @@
                       (ua.indexOf("LINE") > -1) || (ua.indexOf("TikTok") > -1);
         
         if(isInApp) {
-            // ลบเนื้อหาเดิมทั้งหมด แล้ววาดหน้าจอแจ้งเตือนทับลงไปบน Body โดยตรง
-            document.body.innerHTML = `
+            const warningHTML = `
                 <div class="bg-purple-50 flex flex-col items-center justify-center min-h-screen p-6 text-center m-0 fixed inset-0 z-[999999]">
                     <div class="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm flex flex-col items-center border border-purple-100">
                         <div class="w-20 h-20 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mb-6">
@@ -32,10 +31,21 @@
                     </div>
                 </div>
             `;
-            // หยุดการทำงานของสคริปต์อื่นๆ ทันที
-            window.stop(); 
+
+            // เช็คว่าหน้าเว็บมี body หรือยัง
+            if (document.body) {
+                document.body.innerHTML = warningHTML;
+                window.stop();
+            } else {
+                // ถ้ายืนยันว่ายังไม่มี ให้รอจนกว่าโครงสร้างเว็บจะโหลดเสร็จ
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.body.innerHTML = warningHTML;
+                    window.stop();
+                });
+            }
         }
     }
+    
     // เรียกใช้งานฟังก์ชันทันที
     checkInAppBrowser();
 </script>
