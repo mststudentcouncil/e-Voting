@@ -3,7 +3,10 @@ import { auth } from "./firebase-config.js";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ hd: "mst.ac.th" }); // ล็อกให้ขึ้นแนะนำเฉพาะเมลโรงเรียน
+provider.setCustomParameters({ 
+    hd: "mst.ac.th",
+    prompt: "select_account" // เพิ่มบรรทัดนี้: บังคับให้เลือกบัญชีใหม่ทุกครั้ง
+}); 
 
 const loginBtn = document.getElementById("loginBtn");
 

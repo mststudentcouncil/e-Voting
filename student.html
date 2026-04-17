@@ -18,10 +18,26 @@
         .candidate-card { transition: all 0.2s ease; border: 2px solid transparent; }
         .candidate-card.selected { border-color: #7e22ce; background-color: #faf5ff; transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(126, 34, 206, 0.3); }
         .candidate-card.selected .check-circle { background-color: #7e22ce; border-color: #7e22ce; color: white; }
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    }
+}
+
     </style>
     <meta name="theme-color" content="#581c87">
 </head>
 <body class="text-gray-800 pb-24">
+<div id="auth-blocker" class="fixed inset-0 bg-white z-[999] flex flex-col items-center justify-center transition-opacity duration-300">
+    <div id="auth-content" class="flex flex-col items-center text-center px-6 w-full max-w-sm fade-in">
+        
+        <div id="auth-loading" class="flex flex-col items-center mt-4">
+            <div class="animate-spin rounded-full h-10 w-10 border-4 border-gray-100 border-t-purple-600 mb-4"></div>
+            <p class="text-purple-700 font-bold tracking-wide">กำลังตรวจสอบสิทธิ์ความปลอดภัย...</p>
+        </div>
+        
+    </div>
+</div>
 
     <header class="glass-header sticky top-0 z-50 shadow-lg text-white rounded-b-[2rem] pb-6 pt-4 px-6 mb-6">
         <div class="max-w-4xl mx-auto flex justify-between items-center">

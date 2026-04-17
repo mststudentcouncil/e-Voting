@@ -5,17 +5,80 @@ import { collection, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderB
 window.liveResultListeners = {};
 window.globalStudents = []; 
 
+// ฟังก์ชันเปลี่ยนหน้าจอเป็น Error พร้อมปุ่มย้อนกลับ (ปรับ UI ตรงกลางแล้ว)
+function showAuthError(title, desc) {
+    const loadingDiv = document.getElementById("auth-loading");
+    const contentDiv = document.getElementById("auth-content");
+    
+    if (loadingDiv) loadingDiv.style.display = 'none'; // ซ่อนตัวโหลด
+    
+    // สร้าง HTML ชุดใหม่ที่จัดกึ่งกลางสมบูรณ์แบบ
+    const errorHtml = `
+        <div class="flex flex-col items-center justify-center w-full fade-in mt-2">
+            <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-5 border-4 border-red-100 mx-auto shadow-sm">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </div>
+            
+            <h2 class="text-2xl font-black text-gray-800 mb-2 text-center tracking-tight">${title}</h2>
+            <p class="text-gray-500 mb-8 text-sm text-center leading-relaxed">${desc}</p>
+            
+            <button id="authBackBtn" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 border border-gray-200 shadow-sm active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> 
+                กลับไปหน้าแรก
+            </button>
+        </div>
+    `;
+    
+    // ป้องกันการสร้างกล่อง Error ซ้ำซ้อน
+    if (!document.getElementById("error-wrapper-ui")) {
+        const errorWrapper = document.createElement("div");
+        errorWrapper.id = "error-wrapper-ui";
+        errorWrapper.className = "w-full";
+        errorWrapper.innerHTML = errorHtml;
+        contentDiv.appendChild(errorWrapper);
+
+        // ผูกคำสั่งปุ่มย้อนกลับให้ Logout
+        document.getElementById("authBackBtn").addEventListener("click", () => {
+            signOut(auth).then(() => window.location.href = "index.html");
+        });
+    }
+}
+
+// ตรวจสอบสิทธิ์
 onAuthStateChanged(auth, (user) => {
-    if (!user) { window.location.href = "index.html"; } 
+    const blocker = document.getElementById("auth-blocker");
+
+    if (!user) { 
+        window.location.href = "index.html"; 
+    } 
     else if (user.email !== "studentcouncil@mst.ac.th") {
-        Swal.fire('ปฏิเสธการเข้าถึง', 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้', 'error').then(() => { window.location.href = "student.html"; });
+        // ไม่มีสิทธิ์ -> เปลี่ยนหน้าจอโหลดเป็นหน้าจอ Error
+        showAuthError("ปฏิเสธการเข้าถึง", "บัญชีนี้ไม่มีสิทธิ์เข้าถึงหน้าระบบจัดการแอดมิน");
     } else { 
+        // มีสิทธิ์ (แอดมิน) -> ซ่อนม่านบังหน้าจอ
+        if(blocker) {
+            blocker.classList.add("opacity-0");
+            setTimeout(() => blocker.classList.add("hidden"), 300);
+        }
         if(document.getElementById("adminEmail")) document.getElementById("adminEmail").innerText = `${user.email}`; 
         checkStudentCount(); 
     }
 });
 
-document.getElementById("logoutBtn")?.addEventListener("click", () => { signOut(auth).then(() => window.location.href = "index.html"); });
+
+// ผูกฟังก์ชัน Logout ให้กับปุ่มบนมือถือ (ใส่ไว้ใน admin.js)
+document.getElementById("mobileLogoutBtn")?.addEventListener("click", () => { 
+    Swal.fire({ 
+        title: 'ออกจากระบบ?', 
+        icon: 'question', 
+        showCancelButton: true, 
+        confirmButtonText: 'ยืนยัน', 
+        cancelButtonText: 'ยกเลิก' 
+    }).then((r) => { 
+        if (r.isConfirmed) signOut(auth).then(() => window.location.href = "index.html"); 
+    });
+});
+
 
 // ================= ระบบแสดงฟอร์มเต็มจอ =================
 window.showCreateForm = function() {
