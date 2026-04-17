@@ -3,68 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบลงคะแนนอิเล็กทรอนิกส์ - e-Voting</title>
+    <title>ระบบลงคะแนนอิเล็กทรอนิกส์ - MST e-Voting</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png">
-    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
     <style>
-        body { font-family: 'Anuphan', sans-serif; background-color: #f3f4f6; }
-        .peer:checked + .card-content { border-color: #6b21a8; background-color: #faf5ff; border-width: 2px;}
-        .peer:checked + .card-content .check-icon { display: block; }
-        .peer:checked + .card-content .candidate-num { background-color: #6b21a8; color: white; }
+        body { font-family: 'Anuphan', sans-serif; background-color: #f4f7fe; }
+        .glass-header { background: rgba(88, 28, 135, 0.95); backdrop-filter: blur(10px); }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        /* สไตล์สำหรับการเลือกการ์ดผู้สมัคร */
+        .candidate-card { transition: all 0.2s ease; border: 2px solid transparent; }
+        .candidate-card.selected { border-color: #7e22ce; background-color: #faf5ff; transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(126, 34, 206, 0.3); }
+        .candidate-card.selected .check-circle { background-color: #7e22ce; border-color: #7e22ce; color: white; }
     </style>
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#581c87">
+    <meta name="theme-color" content="#581c87">
 </head>
-<body class="text-gray-800">
+<body class="text-gray-800 pb-24">
 
-    <nav class="bg-purple-900 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-3 py-2 sm:py-3 flex justify-between items-center gap-1 sm:gap-2">
-            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                <img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" alt="MSTSC Logo" class="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full p-0.5 shadow-sm">
-                <div class="hidden sm:block">
-                    <h1 class="text-sm md:text-base font-bold tracking-wide">ระบบลงคะแนนอิเล็กทรอนิกส์ (e-Voting)</h1>
-                    <p class="text-[10px] text-purple-200">คณะกรรมการสภานักเรียนโรงเรียนเมืองสุราษฎร์ธานี</p>
+    <header class="glass-header sticky top-0 z-50 shadow-lg text-white rounded-b-[2rem] pb-6 pt-4 px-6 mb-6">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-1 rounded-full shadow-md"><img src="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png" class="w-10 h-10 object-contain"></div>
+                <div>
+                    <h1 class="font-extrabold text-lg leading-tight tracking-wide">MST e-Voting</h1>
+                    <p class="text-[10px] text-purple-200 uppercase tracking-widest font-medium">Student Portal</p>
                 </div>
-                <div class="sm:hidden"><h1 class="text-[13px] font-bold tracking-wide">e-Voting</h1></div>
             </div>
-            <div class="flex items-center gap-2 sm:gap-4 justify-end min-w-0">
-                <div class="text-right">
-                    <p id="userEmail" class="text-[11px] sm:text-sm font-medium leading-tight text-white">กำลังโหลด...</p>
+            <button id="logoutBtn" class="bg-white/20 hover:bg-white/30 p-2.5 rounded-full transition-colors backdrop-blur-sm">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
+        <div class="max-w-4xl mx-auto mt-6 bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-tr from-purple-400 to-pink-400 rounded-full flex items-center justify-center font-bold text-lg shadow-inner text-white border-2 border-white/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            </div>
+            <div class="flex-1 overflow-hidden" id="userEmail">กำลังโหลดข้อมูลผู้ใช้...</div>
+        </div>
+    </header>
+
+    <main id="view-home" class="max-w-4xl mx-auto px-4 fade-in">
+        <div class="flex justify-between items-end mb-4 px-2">
+            <div><h2 class="text-xl font-extrabold text-gray-900">รายการเลือกตั้ง</h2><p class="text-sm text-gray-500 mt-1">กรุณาเลือกรายการที่ต้องการใช้สิทธิ์</p></div>
+        </div>
+        <div class="relative mb-6">
+            <input type="text" id="searchInput" class="w-full pl-11 pr-4 py-3.5 rounded-2xl border-none shadow-sm text-sm focus:ring-2 focus:ring-purple-500 bg-white" placeholder="ค้นหาการเลือกตั้ง...">
+            <svg class="w-5 h-5 text-gray-400 absolute left-4 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+        <div id="campaignList" class="space-y-5 pb-10">
+            <div class="flex justify-center p-10"><div class="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-purple-600"></div></div>
+        </div>
+    </main>
+
+    <main id="view-booth" class="max-w-4xl mx-auto px-4 hidden">
+        <button onclick="exitBooth()" class="flex items-center gap-2 text-purple-700 font-bold mb-4 bg-white px-4 py-2 rounded-full shadow-sm border border-purple-100 hover:bg-purple-50 transition-colors w-fit">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> ออกจากคูหา
+        </button>
+
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-purple-100 mb-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -z-10"></div>
+            <span class="bg-purple-100 text-purple-700 text-[10px] px-3 py-1 rounded-full font-bold tracking-widest uppercase mb-3 inline-block">Virtual Booth</span>
+            <h2 id="boothCampaignTitle" class="text-2xl font-extrabold text-gray-900 leading-tight">ชื่อการเลือกตั้ง</h2>
+            <p id="boothCampaignDesc" class="text-sm text-gray-500 mt-2">โปรดเลือกผู้สมัครเพียง 1 หมายเลข</p>
+        </div>
+
+        <div id="candidatesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-24">
+            </div>
+
+        <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] p-4 pb-safe z-50 transform translate-y-full transition-transform duration-300" id="stickySubmitBar">
+            <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
+                <div class="flex-1">
+                    <p class="text-xs text-gray-500 font-medium">ท่านเลือก:</p>
+                    <p class="font-extrabold text-purple-800 text-lg truncate" id="selectedCandidateName">-</p>
                 </div>
-                <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 sm:px-4 sm:py-1.5 rounded-md text-[10px] sm:text-sm font-medium transition-all shadow-sm shrink-0">ออกจากระบบ</button>
+                <button onclick="confirmVote()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2 shrink-0">
+                    ยืนยันการโหวต <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
             </div>
         </div>
-    </nav>
+    </main>
 
-    <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="max-w-6xl mx-auto px-4 py-6">
-            <h2 class="text-lg font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                ขั้นตอนการลงคะแนน
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div class="bg-purple-50 p-3 rounded-lg border border-purple-100"><span class="bg-purple-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center font-bold text-xs mb-2">1</span><p class="font-medium text-gray-800">เลือกรายการลงคะแนน</p><p class="text-xs text-gray-500 mt-1">ตรวจสอบรายการที่เปิดรับในระบบ</p></div>
-                <div class="bg-purple-50 p-3 rounded-lg border border-purple-100"><span class="bg-purple-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center font-bold text-xs mb-2">2</span><p class="font-medium text-gray-800">เลือกหมายเลข / ตัวเลือก</p><p class="text-xs text-gray-500 mt-1">คลิกที่การ์ดหมายเลขที่ท่านต้องการ</p></div>
-                <div class="bg-purple-50 p-3 rounded-lg border border-purple-100"><span class="bg-purple-600 text-white w-6 h-6 rounded-full inline-flex items-center justify-center font-bold text-xs mb-2">3</span><p class="font-medium text-gray-800">กดยืนยันสิทธิ์</p><p class="text-xs text-gray-500 mt-1">ตรวจสอบความถูกต้องและยืนยันข้อมูล</p></div>
+    <main id="view-receipt" class="max-w-md mx-auto px-4 hidden pt-10 pb-20">
+        <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden relative fade-in" id="receiptCard">
+            <div class="bg-gradient-to-br from-green-400 to-emerald-600 p-8 text-center text-white relative">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-green-500">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-2xl font-black tracking-wide">ทำรายการสำเร็จ</h2>
+                <p class="text-green-50 text-sm mt-1">ท่านได้ใช้สิทธิ์ลงคะแนนเรียบร้อยแล้ว</p>
+                
+                <div class="absolute bottom-0 left-0 w-full overflow-hidden leading-none" style="transform: translateY(50%);">
+                    <svg class="relative block w-full h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                        <path d="M0,0 L1200,0 L1200,120 L0,120 Z" fill="white"></path>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="p-8 pt-10 space-y-5 bg-white relative">
+                <div class="flex justify-between items-center border-b border-dashed border-gray-200 pb-4">
+                    <span class="text-gray-500 text-sm">รหัสอ้างอิง (Ref)</span>
+                    <span class="font-mono font-bold text-gray-800" id="receiptRef">MST-XXXXXXXX</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-dashed border-gray-200 pb-4">
+                    <span class="text-gray-500 text-sm">วันที่ / เวลา</span>
+                    <span class="font-bold text-gray-800 text-right" id="receiptTime">-</span>
+                </div>
+                <div class="flex justify-between items-start border-b border-dashed border-gray-200 pb-4">
+                    <span class="text-gray-500 text-sm whitespace-nowrap mr-4">รายการ</span>
+                    <span class="font-bold text-gray-800 text-right leading-tight" id="receiptCampaignName">-</span>
+                </div>
+                <div class="flex justify-between items-center pb-2">
+                    <span class="text-gray-500 text-sm">ผู้ลงคะแนน</span>
+                    <span class="font-bold text-purple-700 text-right" id="receiptVoterName">-</span>
+                </div>
+                
+                <div class="bg-gray-50 rounded-xl p-4 mt-6 text-center border border-gray-100">
+                    <p class="text-xs text-gray-400 mb-1">เพื่อรักษาความลับของการลงคะแนน</p>
+                    <p class="text-xs text-gray-400">ระบบจะไม่แสดงหมายเลขที่ท่านเลือกในใบเสร็จนี้</p>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        <div class="mb-6 relative max-w-md">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input type="text" id="searchInput" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 shadow-sm text-sm" placeholder="ค้นหาชื่อการเลือกตั้ง หรือกิจกรรม...">
+        <div class="mt-8 space-y-3">
+            <button onclick="window.location.reload()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-4 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> กลับสู่หน้าหลัก
+            </button>
         </div>
-
-        <div id="campaignList" class="space-y-8 pb-10">
-            <div class="flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-800"></div></div>
-        </div>
-    </div>
+    </main>
 
     <script type="module" src="student.js"></script>
 </body>
