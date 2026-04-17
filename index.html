@@ -103,9 +103,41 @@
     </div>
 
     <footer class="text-center py-10 text-gray-400 text-xs">
-        © 2026 Muang Suratthani Student Council. All Rights Reserved.
+        © 2026 Student Council, Muangsuratthani School. All Rights Reserved.
     </footer>
 
     <script type="module" src="auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // ฟังก์ชันตรวจจับ In-App Browser
+    function detectInAppBrowser() {
+        const ua = navigator.userAgent || navigator.vendor || window.opera;
+        
+        // ตรวจจับ LINE, Facebook, Instagram
+        const isInApp = (ua.indexOf("FBAN") > -1) || 
+                        (ua.indexOf("FBAV") > -1) || 
+                        (ua.indexOf("Line") > -1) ||
+                        (ua.indexOf("Instagram") > -1);
+
+        if (isInApp) {
+            // ซ่อนปุ่มล็อกอินเพื่อป้องกันการกดแล้วเออเร่อ
+            const loginBtn = document.getElementById('loginBtn');
+            if(loginBtn) loginBtn.style.display = 'none';
+
+            // แสดงหน้าต่างแจ้งเตือน
+            Swal.fire({
+                icon: 'warning',
+                title: 'โปรดเปิดในเบราว์เซอร์ปกติ',
+                html: 'ระบบไม่รองรับการล็อกอินผ่านแอปแชท (LINE/Facebook) เพื่อความปลอดภัยของบัญชี Google <br><br><b>วิธีแก้:</b> กดที่เมนูจุด 3 จุดมุมจอ แล้วเลือก <br><span class="text-purple-600 font-bold">"เปิดในเบราว์เซอร์ (Open in Browser)"</span>',
+                confirmButtonColor: '#6b21a8',
+                confirmButtonText: 'รับทราบ',
+                allowOutsideClick: false
+            });
+        }
+    }
+
+    // เรียกใช้งานเมื่อโหลดหน้าเว็บ
+    window.addEventListener('DOMContentLoaded', detectInAppBrowser);
+</script>
 </body>
 </html>
