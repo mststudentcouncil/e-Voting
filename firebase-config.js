@@ -2,7 +2,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
 // ใส่ค่า Config ใหม่ของคุณตรงนี้
 const firebaseConfig = {
   apiKey: "AIzaSyDg6LnmXjvARHw8yCMwREirjfVQ2vQrXEg",
