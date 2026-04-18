@@ -2,141 +2,8 @@ import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy, updateDoc, doc, getDoc, deleteDoc, setDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// 1. ฟังก์ชันบีบอัดรูปภาพให้เล็กลง
-async function compressImage(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (e) => {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 800; 
-                let width = img.width; let height = img.height;
-                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8); 
-            };
-        };
-    });
-}
-
-// 2. ฟังก์ชันอัปโหลดรูปไป ImgBB พร้อมรหัส API ของคุณ
-async function uploadToImgBB(imageBlob) {
-    const apiKey = "ac0a29761a5fc56e8f2d555a85a58581"; 
-    const formData = new FormData();
-    formData.append("image", imageBlob);
-
-    try {
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-        return data.data.url; 
-    } catch (error) {
-        console.error("Upload Error:", error);
-        return null;
-    }
-}
 window.liveResultListeners = {};
 window.globalStudents = []; 
-window.refreshOptionNumbers = function() {
-    const options = document.querySelectorAll(".option-group");
-    options.forEach((group, i) => {
-        const index = i + 1; // ลำดับใหม่
-        
-        // 1. อัปเดตป้ายกำกับ "ตัวเลือกที่ X"
-        const numLabel = group.querySelector(".option-number");
-        if (numLabel) {
-            numLabel.textContent = `ตัวเลือกที่ ${index}`;
-        }
-        
-        // 2. อัปเดตรูป Placeholder (กรณีที่ยังไม่มีรูปจริง) ให้ตัวเลขเปลี่ยนตาม
-        const existingImg = group.querySelector(".opt-existing-img");
-        const fileInput = group.querySelector(".opt-file");
-        // ถ้าไม่มีทั้งรูปลิงก์เก่า และ ไม่มีไฟล์อัปโหลดใหม่ แสดงว่าใช้รูป Placeholder อยู่
-        if ((!existingImg || !existingImg.value) && (!fileInput || !fileInput.value)) {
-            const previewImg = group.querySelector(".preview-img");
-            if (previewImg) {
-                // เปลี่ยนตัวเลขในรูปเป็นลำดับใหม่
-                previewImg.src = `https://ui-avatars.com/api/?name=${index}&background=f3f4f6&color=9ca3af&size=150&font-size=0.5`;
-            }
-        }
-    });
-};
-
-// ฟังก์ชันสร้างหน้าต่างผู้สมัคร (แก้ไข: ให้รูป Placeholder เป็นตัวเลขลำดับ)
-function getOptionHTML(index = 1, name = '', imageUrl = '') {
-    // ใช้ตัวเลข (index) ไปสร้างเป็นรูปภาพวงกลมแทนคำว่า "รูป"
-    const defaultImage = `https://ui-avatars.com/api/?name=${index}&background=f3f4f6&color=9ca3af&size=150&font-size=0.5`;
-    
-    const previewSrc = imageUrl ? imageUrl : defaultImage;
-    const statusText = imageUrl ? 'มีรูปภาพแล้ว' : 'ยังไม่ได้เลือกรูปภาพ';
-    const statusColor = imageUrl ? 'text-green-600' : 'text-gray-500';
-
-    return `
-        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3">
-            <div class="absolute top-3 left-4 flex items-center gap-2">
-                <span class="option-number bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ตัวเลือกที่ ${index}</span>
-            </div>
-
-            <button type="button" 
-                class="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-1.5 rounded-lg transition-colors"
-                onclick="this.closest('.option-group').remove(); refreshOptionNumbers();">
-                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-
-            <div class="mt-6">
-                <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold text-gray-700" placeholder="ชื่อผู้สมัคร/ตัวเลือก" value="${name}" required>
-            </div>
-            
-            <div class="flex flex-row items-center gap-3 mt-2 pt-3 border-t border-gray-50">
-                <div class="shrink-0">
-                    <img src="${previewSrc}" class="preview-img w-14 h-14 rounded-full object-cover border border-gray-200 shadow-sm" alt="รูป" onerror="this.src='${defaultImage}'">
-                </div>
-                
-                <div class="flex flex-col flex-1 min-w-0">
-                    <div class="text-[11px] mb-1.5 status-text ${statusColor} truncate">${statusText}</div>
-                    <div class="flex gap-2">
-                        <label class="cursor-pointer inline-flex items-center justify-center gap-1 bg-purple-50 text-purple-700 px-2.5 py-1.5 rounded-lg hover:bg-purple-100 transition-colors text-[11px] font-medium border border-purple-100 shadow-sm whitespace-nowrap">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                            เลือกรูป
-                            <input type="file" class="opt-file hidden" accept="image/*" onchange="
-                                const file = this.files[0];
-                                if(file) {
-                                    const container = this.closest('.option-group');
-                                    container.querySelector('.preview-img').src = window.URL.createObjectURL(file);
-                                    const status = container.querySelector('.status-text');
-                                    status.textContent = 'ไฟล์: ' + file.name;
-                                    status.className = 'text-[11px] mb-1.5 status-text text-green-600 font-bold truncate';
-                                }
-                            ">
-                        </label>
-
-                        <button type="button" class="inline-flex items-center justify-center gap-1 bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-100 transition-colors text-[11px] font-medium border border-red-100 shadow-sm whitespace-nowrap" onclick="
-                            const container = this.closest('.option-group');
-                            // แก้ให้ปุ่มลบ คืนค่ารูปกลับเป็นรูปตัวเลขลำดับเหมือนเดิม
-                            container.querySelector('.preview-img').src = '${defaultImage}';
-                            container.querySelector('.opt-file').value = '';
-                            const existing = container.querySelector('.opt-existing-img');
-                            if(existing) existing.value = '';
-                            const status = container.querySelector('.status-text');
-                            status.textContent = 'ยังไม่ได้เลือกรูปภาพ';
-                            status.className = 'text-[11px] mb-1.5 status-text text-gray-500 truncate';
-                        ">
-                            ลบรูป
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <input type="hidden" class="opt-existing-img" value="${imageUrl}">
-        </div>
-    `;
-}
 
 // ฟังก์ชันเปลี่ยนหน้าจอเป็น Error พร้อมปุ่มย้อนกลับ (ปรับ UI ตรงกลางแล้ว)
 function showAuthError(title, desc) {
@@ -223,8 +90,17 @@ window.showCreateForm = function() {
     document.getElementById("customRoomContainer").classList.add("hidden");
     document.getElementById("formTitle").innerHTML = `<div class="p-2 bg-purple-100 text-purple-600 rounded-xl"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></div> สร้างรายการใหม่`; 
     document.getElementById("submitCampaignBtn").innerHTML = "บันทึกและเปิดระบบ";
-    // เปลี่ยนจาก getOptionHTML() + getOptionHTML() เป็นการระบุลำดับ
-    document.getElementById("optionsContainer").innerHTML = getOptionHTML(1) + getOptionHTML(2);
+    
+    document.getElementById("optionsContainer").innerHTML = `
+        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
+            <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ผู้สมัครคนที่ 1" required>
+            <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ (Drive)">
+        </div>
+        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
+            <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ผู้สมัครคนที่ 2" required>
+            <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ (Drive)">
+        </div>
+    `;
 };
 
 window.hideCreateForm = function() {
@@ -241,10 +117,18 @@ document.getElementById("voterTargetType")?.addEventListener("change", (e) => {
 
 const optionsContainer = document.getElementById("optionsContainer");
 document.getElementById("addOptionBtn")?.addEventListener("click", () => {
-    const currentCount = document.querySelectorAll(".option-group").length;
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = getOptionHTML(currentCount + 1); 
-    document.getElementById("optionsContainer").appendChild(tempDiv.firstElementChild);
+    const div = document.createElement("div");
+    div.className = "option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3";
+    div.innerHTML = `
+        <button type="button" class="absolute top-2 right-2 text-red-500 bg-red-50 p-1.5 rounded-md remove-btn"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ชื่อผู้สมัคร" required>
+        <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ">
+    `;
+    optionsContainer.appendChild(div);
+});
+
+optionsContainer?.addEventListener("click", (e) => {
+    if (e.target.closest('.remove-btn')) e.target.closest('.option-group').remove();
 });
 
 document.getElementById("bulkAddBtn")?.addEventListener("click", () => {
@@ -297,53 +181,12 @@ document.getElementById("createCampaignForm")?.addEventListener("submit", async 
         if(!payload.allowed_voters.values.length) return Swal.fire('แจ้งเตือน', 'ระบุห้องเรียนอย่างน้อย 1 ห้อง', 'warning');
     }
 
-    let optionsData = []; 
-    let initialVotes = {};
-
-    const optionGroups = document.querySelectorAll(".option-group");
-    for (let i = 0; i < optionGroups.length; i++) {
-        const group = optionGroups[i];
+    let optionsData = []; let initialVotes = {};
+    document.querySelectorAll(".option-group").forEach(group => {
         const name = group.querySelector(".opt-name").value.trim();
-        const fileInput = group.querySelector(".opt-file"); 
-        
-        // 1. ลองหาว่ามีลิงก์รูปเก่าซ่อนอยู่ไหม (ระบบป้องกัน null)
-        const existingImgElement = group.querySelector(".opt-existing-img");
-        let imageUrl = existingImgElement ? existingImgElement.value : ""; 
-
-        if (name) {
-            // 2. เช็คว่าแอดมินมีการกดอัปโหลดไฟล์รูปใหม่มาด้วยไหม
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                const compressedBlob = await compressImage(fileInput.files[0]); 
-                const uploadedUrl = await uploadToImgBB(compressedBlob);
-                
-                if (uploadedUrl) {
-                    imageUrl = uploadedUrl; // ใช้ลิงก์ใหม่ที่เพิ่งอัปโหลดเสร็จ ทับรูปเก่าไปเลย
-                }
-            }
-            // 3. ถ้าไม่มีรูปลิงก์เก่า และไม่ได้อัปโหลดรูปใหม่ (แอดมินปล่อยว่างไว้)
-            else if (!imageUrl || imageUrl === "") {
-                // เปลี่ยนจากเอา 'ชื่อ' มาทำรูป ให้เป็น 'ตัวเลขลำดับ (i + 1)' แทน
-                // พร้อมปรับสีให้เป็นโทนม่วง (background=f5f3ff & color=7c3aed)
-                imageUrl = `https://ui-avatars.com/api/?name=${i + 1}&background=f5f3ff&color=7c3aed&size=150&font-size=0.5`;
-            }
-            
-            optionsData.push({ name: name, image: imageUrl }); 
-            if (typeof initialVotes !== 'undefined') initialVotes[name] = 0; 
-        }
-    }
-
-    if (optionsData.length < 2) {
-        Swal.close();
-        return Swal.fire('ผิดพลาด', 'ต้องมีอย่างน้อย 2 ตัวเลือก', 'error');
-    }
-    
-    payload.options = optionsData;
-
-    if (optionsData.length < 2) {
-        Swal.close(); // ปิดหน้าต่างโหลด
-        return Swal.fire('ผิดพลาด', 'ต้องมีอย่างน้อย 2 ตัวเลือก', 'error');
-    }
-    
+        if (name) { optionsData.push({ name: name, image: formatImageUrl(group.querySelector(".opt-img").value.trim()) }); initialVotes[name] = 0; }
+    });
+    if (optionsData.length < 2) return Swal.fire('ผิดพลาด', 'ต้องมีอย่างน้อย 2 ตัวเลือก', 'error');
     payload.options = optionsData;
 
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -383,11 +226,11 @@ window.editCampaign = async function(campaignId) {
         }
 
         optionsContainer.innerHTML = "";
-data.options.forEach((opt, index) => {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = getOptionHTML(index + 1, opt.name, opt.image); 
-    optionsContainer.appendChild(tempDiv.firstElementChild);
-});
+        data.options.forEach((opt) => {
+            const div = document.createElement("div"); div.className = "option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3";
+            div.innerHTML = `<button type="button" class="absolute top-2 right-2 text-red-500 bg-red-50 p-1.5 rounded-md remove-btn"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" value="${opt.name}" required><input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" value="${opt.image || ''}">`;
+            optionsContainer.appendChild(div);
+        });
         document.getElementById("formTitle").innerHTML = `<div class="p-2 bg-yellow-100 text-yellow-600 rounded-xl"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></div> แก้ไขรายการ`; 
         Swal.close();
     } catch (error) { Swal.fire('ผิดพลาด', 'ดึงข้อมูลไม่ได้', 'error'); }
@@ -529,45 +372,10 @@ window.toggleStatus = async function(id, status) {
     try { await updateDoc(doc(db, "campaigns", id), { status: status === "open" ? "closed" : "open" }); loadCampaigns(); } catch (e) {}
 }
 window.deleteCampaign = async function(id) {
-    Swal.fire({ 
-        title: 'ยืนยันการลบ', 
-        text: "หากลบแล้ว ข้อมูลคะแนนและรูปภาพที่เกี่ยวข้องจะหายไปตลอดกาล", 
-        icon: 'warning', 
-        showCancelButton: true, 
-        confirmButtonColor: '#d33', 
-        confirmButtonText: 'ลบทิ้งเลย' 
-    })
+    Swal.fire({ title: 'ยืนยันการลบ', text: "หากลบแล้ว ข้อมูลคะแนนจะหายไปตลอดกาล", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบทิ้งเลย' })
     .then(async (result) => {
         if (result.isConfirmed) {
-            Swal.fire({ title: 'กำลังลบข้อมูลและทำความสะอาดพื้นที่...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
-            try {
-                const docRef = doc(db, "campaigns", id);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    
-                    // 1. ตามไปลบรูปภาพทั้งหมดใน Storage (ถ้ามี)
-                    if (data.storagePaths && data.storagePaths.length > 0) {
-                        for (const path of data.storagePaths) {
-                            try { 
-                                await deleteObject(ref(storage, path)); 
-                            } catch(e) { 
-                                console.log("ข้ามไฟล์ที่ไม่มีอยู่จริง:", path); 
-                            }
-                        }
-                    }
-                }
-                
-                // 2. ลบข้อมูลแคมเปญใน Firestore
-                await deleteDoc(docRef); 
-                
-                Swal.fire('สำเร็จ', 'ลบข้อมูลและคืนพื้นที่ว่างเรียบร้อยแล้ว', 'success');
-                loadCampaigns(); 
-            } catch (error) {
-                Swal.fire('ผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error');
-            }
+            await deleteDoc(doc(db, "campaigns", id)); loadCampaigns(); 
         }
     });
 }
