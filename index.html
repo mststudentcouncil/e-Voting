@@ -48,6 +48,25 @@
     
     // เรียกใช้งานฟังก์ชันทันที
     checkInAppBrowser();
+    // ฟังก์ชันเด้งหน้าต่างถามก่อนพาไปหน้า LINE
+window.confirmContactSupport = function() {
+    Swal.fire({
+        title: 'พบปัญหาในการใช้งาน?',
+        text: 'ระบบจะนำคุณไปยังแอปพลิเคชัน LINE เพื่อพูดคุยปัญหากับผู้ดูแลระบบ ต้องการดำเนินการต่อหรือไม่?',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#7e22ce', // สีม่วงให้เข้ากับธีมเว็บไซต์
+        cancelButtonColor: '#d1d5db',
+        confirmButtonText: 'ใช่, ไปที่ LINE',
+        cancelButtonText: 'ยกเลิก',
+        customClass: { popup: 'rounded-[2rem]' } // ทำขอบโค้งมนให้สวยงามเข้ากับเว็บ
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // ถ้ากดยืนยัน จะเปิดแท็บใหม่ไปที่ LINE ทันที
+            window.open('https://lin.ee/Os28nIs', '_blank');
+        }
+    });
+};
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -156,5 +175,13 @@
 
     <script type="module" src="auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <div class="fixed bottom-6 right-6 z-[9999]">
+    <button onclick="confirmContactSupport()" class="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-lg rounded-full p-3 text-gray-400 hover:text-purple-600 hover:border-purple-300 hover:shadow-xl transition-all duration-300 group outline-none active:scale-95">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+        <span class="max-w-0 overflow-hidden group-hover:max-w-[200px] transition-all duration-500 ease-in-out whitespace-nowrap text-xs font-bold text-purple-600">
+            แจ้งปัญหาการใช้งาน
+        </span>
+    </button>
+</div>
 </body>
 </html>

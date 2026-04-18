@@ -4,6 +4,160 @@ import { collection, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderB
 
 window.liveResultListeners = {};
 window.globalStudents = []; 
+// 1. ใส่ API Key ที่ก๊อปปี้มาตรงนี้
+const IMGBB_API_KEY = "ac0a29761a5fc56e8f2d555a85a58581"; 
+
+// 2. ฟังก์ชันคุยหลังบ้านกับ ImgBB
+async function uploadToImgBB(file) {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("key", IMGBB_API_KEY);
+
+    try {
+        const response = await fetch("https://api.imgbb.com/1/upload", {
+            method: "POST",
+            body: formData
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.data.url; // ถ้าสำเร็จ ส่งลิงก์รูปกลับมา
+        } else {
+            throw new Error(data.error.message);
+        }
+    } catch (error) {
+        console.error("Upload Error:", error);
+        return null;
+    }
+}
+// 3. ฟังก์ชันจัดการเมื่อเลือกรูป (โชว์กำลังโหลด -> อัปโหลด -> โชว์รูป/ข้อความสำเร็จ)
+window.handleImageUpload = async function(inputElem) {
+    const file = inputElem.files[0];
+    if (!file) return;
+
+    // หาตำแหน่งของช่องต่างๆ เพื่อเปลี่ยนหน้าตา 
+    const wrapper = inputElem.closest('.image-upload-wrapper');
+    const statusDiv = wrapper.querySelector('.upload-status');
+    const previewDiv = wrapper.querySelector('.image-preview');
+    const hiddenInput = wrapper.querySelector('.opt-img');
+    const uploadBtn = wrapper.querySelector('.upload-btn');
+    const removeBtn = wrapper.querySelector('.remove-img-btn');
+
+    // ⏳ สถานะ: เปลี่ยนข้อความและกรอบเป็น "กำลังอัปโหลด" (ใช้ SVG แบบหมุน)
+    statusDiv.innerHTML = `
+        <span class="flex items-center justify-center gap-1.5 text-blue-500 font-bold">
+            <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            กำลังอัปโหลด...
+        </span>`;
+    uploadBtn.disabled = true;
+
+    // สั่งอัปโหลด
+    const imageUrl = await uploadToImgBB(file);
+    
+    // ตรวจสอบผลลัพธ์
+    if (imageUrl) {
+        hiddenInput.value = imageUrl; // แอบเก็บ URL ไว้รอกด Submit
+        previewDiv.style.backgroundImage = `url('${imageUrl}')`;
+        previewDiv.classList.remove('hidden'); 
+        removeBtn.classList.remove('hidden');
+        
+        // ✅ สถานะ: สำเร็จ (SVG เครื่องหมายถูก)
+        statusDiv.innerHTML = `
+            <span class="flex items-center justify-center gap-1.5 text-green-500 font-bold">
+                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                อัปโหลดสำเร็จ
+            </span>`;
+    } else {
+        // ❌ สถานะ: ล้มเหลว (SVG เครื่องหมายตกใจ)
+        statusDiv.innerHTML = `
+            <span class="flex items-center justify-center gap-1.5 text-red-500 font-bold">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                อัปโหลดไม่สำเร็จ
+            </span>`;
+    }
+    
+    uploadBtn.disabled = false;
+};
+// 4. ฟังก์ชันเมื่อกดลบรูปภาพ
+window.removeImage = function(btnElem) {
+    const wrapper = btnElem.closest('.image-upload-wrapper');
+    const previewDiv = wrapper.querySelector('.image-preview');
+    const hiddenInput = wrapper.querySelector('.opt-img');
+    const statusDiv = wrapper.querySelector('.upload-status');
+    const fileInput = wrapper.querySelector('.opt-img-file');
+    
+    hiddenInput.value = ''; 
+    fileInput.value = ''; 
+    previewDiv.style.backgroundImage = ''; 
+    previewDiv.classList.add('hidden'); 
+    btnElem.classList.add('hidden'); 
+    
+    // 🗑️ สถานะ: ลบแล้ว (SVG ขีดฆ่า/รีเซ็ต)
+    statusDiv.innerHTML = `
+        <span class="flex items-center justify-center gap-1.5 text-gray-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4l16 16M4 20L20 4"></path></svg>
+            นำรูปออกแล้ว
+        </span>`;
+};
+// แม่แบบ HTML ของตัวเลือกการโหวต (ปรับ Badge ให้กว้างขึ้นเพื่อรองรับคำว่า "หมายเลข")
+const getOptionTemplate = (name = "", imgUrl = "", index = 1) => {
+    const hasImage = imgUrl ? true : false;
+    const showPreview = hasImage ? "" : "hidden";
+    const bgStyle = hasImage ? `background-image: url('${imgUrl}');` : "";
+    
+    // ล็อกตัวเลือกที่ 1 และ 2 ไม่ให้มีปุ่มลบ
+    const isLocked = index <= 2;
+    const removeBtnHtml = isLocked ? '' : `
+        <button type="button" onclick="this.closest('.option-group').remove(); updateOptionNumbers();" class="text-red-400 bg-red-50 p-1.5 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors shrink-0">
+            <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    `;
+    
+    return `
+        <div class="flex items-center justify-between mb-2">
+            <div class="bg-purple-600 text-white px-2.5 py-1 rounded-lg flex items-center justify-center font-bold text-[10px] shadow-sm opt-num-badge">
+                หมายเลข ${index}
+            </div>
+            ${removeBtnHtml}
+        </div>
+        
+        <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-3 focus:outline-none focus:border-purple-600 text-sm font-bold mt-1 px-1" value="${name}" placeholder="ชื่อผู้สมัคร / ชื่อตัวเลือก" required>
+        
+        <div class="image-upload-wrapper mt-2 bg-gray-50 p-3 rounded-lg border border-gray-200 border-dashed">
+            <input type="file" accept="image/*" class="opt-img-file hidden" onchange="handleImageUpload(this)">
+            <div class="flex gap-2 relative z-10">
+                <button type="button" onclick="this.parentElement.previousElementSibling.click()" class="upload-btn flex-1 bg-white border border-gray-200 hover:border-purple-400 hover:text-purple-600 text-gray-700 text-xs px-3 py-2 rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-sm font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> 
+                    เลือกรูปภาพ
+                </button>
+                <button type="button" onclick="removeImage(this)" title="ลบรูป" class="remove-img-btn bg-red-50 hover:bg-red-100 text-red-500 px-3 py-2 rounded-md transition-colors ${showPreview} flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+            <div class="upload-status text-xs mt-2 text-gray-500 text-center flex items-center justify-center gap-1.5">
+                ${hasImage ? '<span class="text-blue-500 font-bold">ใช้รูปเดิม</span>' : '<span>รองรับ JPG, PNG</span>'}
+            </div>
+            <div class="image-preview w-full h-32 mt-3 ${showPreview} rounded-md border border-gray-200 bg-center bg-no-repeat bg-contain bg-white shadow-inner" style="${bgStyle}"></div>
+            <input type="hidden" class="opt-img" value="${imgUrl}">
+        </div>
+    `;
+};
+
+// ฟังก์ชันอัปเดตเลขลำดับ (เพิ่มคำว่าหมายเลขเข้าไปด้วย)
+window.updateOptionNumbers = function() {
+    document.querySelectorAll('.option-group').forEach((group, idx) => {
+        const badge = group.querySelector('.opt-num-badge');
+        if (badge) badge.innerText = "หมายเลข " + (idx + 1);
+    });
+};
+
+// ฟังก์ชันอัปเดตเลขลำดับเวลาลบตัวเลือก (ใส่เพิ่มลงไปใน admin.js)
+window.updateOptionNumbers = function() {
+    document.querySelectorAll('.option-group').forEach((group, idx) => {
+        const badge = group.querySelector('.opt-num-badge');
+        if (badge) badge.innerText = idx + 1;
+    });
+};
 
 // ฟังก์ชันเปลี่ยนหน้าจอเป็น Error พร้อมปุ่มย้อนกลับ (ปรับ UI ตรงกลางแล้ว)
 function showAuthError(title, desc) {
@@ -66,18 +220,23 @@ onAuthStateChanged(auth, (user) => {
 });
 
 
-// ผูกฟังก์ชัน Logout ให้กับปุ่มบนมือถือ (ใส่ไว้ใน admin.js)
-document.getElementById("mobileLogoutBtn")?.addEventListener("click", () => { 
+// ฟังก์ชันออกจากระบบ
+const handleLogout = () => {
     Swal.fire({ 
         title: 'ออกจากระบบ?', 
         icon: 'question', 
         showCancelButton: true, 
+        confirmButtonColor: '#d33',
         confirmButtonText: 'ยืนยัน', 
         cancelButtonText: 'ยกเลิก' 
     }).then((r) => { 
         if (r.isConfirmed) signOut(auth).then(() => window.location.href = "index.html"); 
     });
-});
+};
+
+// ผูกคำสั่งให้ทำงานทั้งปุ่มบนคอมและปุ่มบนมือถือ
+document.getElementById("logoutBtn")?.addEventListener("click", handleLogout);
+document.getElementById("mobileLogoutBtn")?.addEventListener("click", handleLogout);
 
 
 // ================= ระบบแสดงฟอร์มเต็มจอ =================
@@ -90,15 +249,13 @@ window.showCreateForm = function() {
     document.getElementById("customRoomContainer").classList.add("hidden");
     document.getElementById("formTitle").innerHTML = `<div class="p-2 bg-purple-100 text-purple-600 rounded-xl"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></div> สร้างรายการใหม่`; 
     document.getElementById("submitCampaignBtn").innerHTML = "บันทึกและเปิดระบบ";
-    
+    // เตรียมกรอบเปล่าๆ ให้ 2 ตัวเลือกเมื่อกดสร้างแคมเปญใหม่
     document.getElementById("optionsContainer").innerHTML = `
-        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
-            <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ผู้สมัครคนที่ 1" required>
-            <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ (Drive)">
+        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3">
+            ${getOptionTemplate('', '', 1)}
         </div>
-        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
-            <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ผู้สมัครคนที่ 2" required>
-            <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ (Drive)">
+        <div class="option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3">
+            ${getOptionTemplate('', '', 2)}
         </div>
     `;
 };
@@ -117,14 +274,11 @@ document.getElementById("voterTargetType")?.addEventListener("change", (e) => {
 
 const optionsContainer = document.getElementById("optionsContainer");
 document.getElementById("addOptionBtn")?.addEventListener("click", () => {
+    const currentCount = document.querySelectorAll(".option-group").length;
     const div = document.createElement("div");
     div.className = "option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3";
-    div.innerHTML = `
-        <button type="button" class="absolute top-2 right-2 text-red-500 bg-red-50 p-1.5 rounded-md remove-btn"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-        <input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" placeholder="ชื่อผู้สมัคร" required>
-        <input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" placeholder="ลิงก์รูปภาพ">
-    `;
-    optionsContainer.appendChild(div);
+    div.innerHTML = getOptionTemplate('', '', currentCount + 1);
+    document.getElementById("optionsContainer").appendChild(div);
 });
 
 optionsContainer?.addEventListener("click", (e) => {
@@ -226,11 +380,13 @@ window.editCampaign = async function(campaignId) {
         }
 
         optionsContainer.innerHTML = "";
-        data.options.forEach((opt) => {
-            const div = document.createElement("div"); div.className = "option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3";
-            div.innerHTML = `<button type="button" class="absolute top-2 right-2 text-red-500 bg-red-50 p-1.5 rounded-md remove-btn"><svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><input type="text" class="opt-name w-full border-b-2 border-gray-100 pb-1 mb-2 focus:outline-none focus:border-purple-600 text-sm font-bold" value="${opt.name}" required><input type="url" class="opt-img w-full text-xs text-gray-500 focus:outline-none bg-gray-50 p-2 rounded-md" value="${opt.image || ''}">`;
+        data.options.forEach((opt, idx) => {
+            const div = document.createElement("div"); 
+            div.className = "option-group bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group mt-3";
+            div.innerHTML = getOptionTemplate(opt.name, opt.image, idx + 1); 
             optionsContainer.appendChild(div);
         });
+
         document.getElementById("formTitle").innerHTML = `<div class="p-2 bg-yellow-100 text-yellow-600 rounded-xl"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></div> แก้ไขรายการ`; 
         Swal.close();
     } catch (error) { Swal.fire('ผิดพลาด', 'ดึงข้อมูลไม่ได้', 'error'); }
@@ -630,7 +786,7 @@ window.viewResults = async function(campaignId) {
             
             let totalVotes = 0; const validVotes = [];
             Object.entries(votes).forEach(([option, count]) => {
-                if (option.length > 1 && typeof count === 'number' && !isNaN(count)) { totalVotes += count; validVotes.push([option, count]); }
+                if (option.trim().length > 0 && typeof count === 'number' && !isNaN(count)) { totalVotes += count; validVotes.push([option, count]); }
             });
 
             validVotes.sort((a, b) => b[1] - a[1]).forEach(([option, count], index) => {
@@ -697,7 +853,7 @@ window.exportExcel = async function(campaignId) {
 
             let totalVotes = 0; const validVotes = [];
             Object.entries(votes).forEach(([option, count]) => {
-                if (option.length > 1 && typeof count === 'number' && !isNaN(count)) { totalVotes += count; validVotes.push([option, count]); }
+                if (option.trim().length > 0 && typeof count === 'number' && !isNaN(count)) { totalVotes += count; validVotes.push([option, count]); }
             });
 
             let summaryData = [ ["หัวข้อการลงคะแนน:", data.title], [""], ["--- สรุปคะแนนผู้สมัคร ---", "", ""], ["ตัวเลือก / ผู้สมัคร", "คะแนนโหวต (คน)", "เปอร์เซ็นต์ (%)"] ];
