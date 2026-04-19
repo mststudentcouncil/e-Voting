@@ -155,7 +155,7 @@ window.updateOptionNumbers = function() {
 window.updateOptionNumbers = function() {
     document.querySelectorAll('.option-group').forEach((group, idx) => {
         const badge = group.querySelector('.opt-num-badge');
-        if (badge) badge.innerText = idx + 1;
+        if (badge) badge.innerText = "หมายเลข " + (idx + 1);
     });
 };
 
