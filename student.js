@@ -386,11 +386,10 @@ function showReceipt(campaignName, voterName) {
     document.getElementById("view-receipt").classList.remove("hidden");
     document.getElementById("stickySubmitBar").classList.add("translate-y-full");
     
-    // เปลี่ยนจากคำสั่งเดิม: window.scrollTo({ top: 0, behavior: 'smooth' });
-    // เป็นการใส่ setTimeout หน่วงเวลาไว้ 50 มิลลิวินาที
+    // เพิ่มเวลาหน่วงเป็น 400 มิลลิวินาที รอให้ Pop-up ปิดสนิทก่อน
     setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 50);
+    }, 400);
 
     const refId = "MST-" + Math.random().toString(36).substr(2, 8).toUpperCase();
     const now = new Date();
