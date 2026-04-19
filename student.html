@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ระบบลงคะแนนอิเล็กทรอนิกส์ - MST e-Voting</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/yxjxZmRN/Logo_mstsc_(1)_(1).png">
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -10,25 +10,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
     <style>
-        body { font-family: 'Anuphan', sans-serif; background-color: #f4f7fe; }
-        .glass-header { background: rgba(88, 28, 135, 0.95); backdrop-filter: blur(10px); }
-        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        /* สไตล์สำหรับการเลือกการ์ดผู้สมัคร */
-        .candidate-card { transition: all 0.2s ease; border: 2px solid transparent; }
-        .candidate-card.selected { border-color: #7e22ce; background-color: #faf5ff; transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(126, 34, 206, 0.3); }
-        .candidate-card.selected .check-circle { background-color: #7e22ce; border-color: #7e22ce; color: white; }
-        @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .pb-safe {
-        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-    }
+        /* บังคับสีพื้นหลังของเว็บทั้งหมด (รวมส่วนที่ดึงหน้าจอด้วย) */
+html {
+    background-color: #581c87 !important; 
 }
-/* ป้องกันแถบด้านบนชนรอยบากกล้องมือถือ */
+
+body { 
+    font-family: 'Anuphan', sans-serif; 
+    /* สีพื้นหลังของเนื้อหาเว็บ (เทาฟ้า) และไล่สีให้ด้านบนสุด (ใต้กล้อง) เป็นสีม่วง */
+    background: linear-gradient(to bottom, #581c87 0%, #581c87 150px, #f4f7fe 150px, #f4f7fe 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+}
+
+/* ปรับระยะขอบด้านบนให้หลบรอยบาก/Dynamic Island แต่ยังคงสีพื้นหลังไว้ */
 .pt-safe {
     padding-top: calc(1rem + env(safe-area-inset-top));
 }
     </style>
-    <meta name="theme-color" content="#581c87">
+    <meta name="theme-color" content="#581c87" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#581c87" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="text-gray-800 pb-24">
 <div id="auth-blocker" class="fixed inset-0 bg-white z-[999] flex flex-col items-center justify-center transition-opacity duration-300">
