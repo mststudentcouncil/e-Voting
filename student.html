@@ -10,20 +10,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Anuphan', 'sans-serif'] } } } }</script>
     <style>
-        /* บังคับสีพื้นหลังของเว็บทั้งหมด (รวมส่วนที่ดึงหน้าจอด้วย) */
-html {
-    background-color: #581c87 !important; 
+        body { font-family: 'Anuphan', sans-serif; background-color: #f4f7fe; }
+        .glass-header { background: rgba(88, 28, 135, 0.95); backdrop-filter: blur(10px); }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        /* สไตล์สำหรับการเลือกการ์ดผู้สมัคร */
+        .candidate-card { transition: all 0.2s ease; border: 2px solid transparent; }
+        .candidate-card.selected { border-color: #7e22ce; background-color: #faf5ff; transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(126, 34, 206, 0.3); }
+        .candidate-card.selected .check-circle { background-color: #7e22ce; border-color: #7e22ce; color: white; }
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    }
 }
-
-body { 
-    font-family: 'Anuphan', sans-serif; 
-    /* สีพื้นหลังของเนื้อหาเว็บ (เทาฟ้า) และไล่สีให้ด้านบนสุด (ใต้กล้อง) เป็นสีม่วง */
-    background: linear-gradient(to bottom, #581c87 0%, #581c87 150px, #f4f7fe 150px, #f4f7fe 100%) !important;
-    background-attachment: fixed !important;
-    min-height: 100vh;
-}
-
-/* ปรับระยะขอบด้านบนให้หลบรอยบาก/Dynamic Island แต่ยังคงสีพื้นหลังไว้ */
+/* ป้องกันแถบด้านบนชนรอยบากกล้องมือถือ */
 .pt-safe {
     padding-top: calc(1rem + env(safe-area-inset-top));
 }
