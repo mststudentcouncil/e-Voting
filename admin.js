@@ -1014,8 +1014,8 @@ async function checkSystemHealth() {
     }
 }
 
-// เปลี่ยนความถี่เป็นเช็กทุกๆ 1 นาที (60,000 มิลลิวินาที) แทน 30 วินาที เพื่อประหยัดโควตา 
-setInterval(checkSystemHealth, 60000);
+// admin.js บรรทัดสุดท้าย
+setInterval(checkSystemHealth, 300000); // เช็กทุก 5 นาทีพอ
 
 // ================= 2. ระบบดึงข้อมูลอัตโนมัติ (Hybrid + ซิงค์รายชื่อ + ข้ามชีทซ่อน) =================
 document.getElementById("autoImportWebBtn")?.addEventListener("click", async () => {
