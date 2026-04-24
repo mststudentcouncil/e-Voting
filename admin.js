@@ -685,7 +685,14 @@ document.getElementById("importStudentsBtn")?.addEventListener("click", async ()
                         }
 
                         if(fn.length > 5) {
-                            all.push({ id: r[idx].toString().trim(), name: fn.replace(/['"]/g, ''), room: currentRoom, level: currentLevel });
+                            all.push({ 
+    id: r[idx].toString().trim(), 
+    name: fn.replace(/['"]/g, '')
+            .replace(/^(นาย|นางสาว|นาง|น\.ส\.|เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.)\s+/g, '$1') // ตัดช่องว่างหลังคำนำหน้า
+            .trim(), 
+    room: currentRoom, 
+    level: currentLevel 
+});
                         }
                     }
                 });
@@ -1108,7 +1115,14 @@ document.getElementById("autoImportWebBtn")?.addEventListener("click", async () 
                             }
                             
                             if(fn.length > 5) {
-                                all.push({ id: r[idx].toString().trim(), name: fn.replace(/['"]/g, ''), room: currentRoom, level: currentLevel });
+                                all.push({ 
+    id: r[idx].toString().trim(), 
+    name: fn.replace(/['"]/g, '')
+            .replace(/^(นาย|นางสาว|นาง|น\.ส\.|เด็กชาย|เด็กหญิง|ด\.ช\.|ด\.ญ\.)\s+/g, '$1') // ตัดช่องว่างหลังคำนำหน้า
+            .trim(), 
+    room: currentRoom, 
+    level: currentLevel 
+});
                             }
                         }
                     });
