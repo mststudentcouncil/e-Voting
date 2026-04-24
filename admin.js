@@ -1028,7 +1028,7 @@ document.getElementById("autoImportWebBtn")?.addEventListener("click", async () 
                 // สแกนเว็บ
                 Swal.fire({ title: 'กำลังสแกนเว็บไซต์...', html: 'ค้นหาลิงก์รายชื่อจาก www.mst.ac.th', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 const targetWebUrl = encodeURIComponent("http://www.mst.ac.th/index.php");
-                const webProxyUrl = `https://corsproxy.io/?${targetWebUrl}`;
+                const webProxyUrl = `https://mst-proxy.studentcouncil-f38.workers.dev/?url=${targetWebUrl}`;
                 const webResponse = await fetch(webProxyUrl);
                 if (!webResponse.ok) throw new Error("Proxy ขัดข้อง");
                 
@@ -1065,7 +1065,7 @@ document.getElementById("autoImportWebBtn")?.addEventListener("click", async () 
                     if (!directResp.ok) throw new Error("Direct fetch failed");
                     arrayBuffer = await directResp.arrayBuffer();
                 } catch (e) {
-                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(xlsxExportUrl)}`;
+                    const proxyUrl = `https://mst-proxy.studentcouncil-f38.workers.dev/?url=${encodeURIComponent(xlsxExportUrl)}`;
                     const proxyResp = await fetch(proxyUrl);
                     if (!proxyResp.ok) throw new Error("ดาวน์โหลดไฟล์ไม่ได้ โปรดเช็คสิทธิ์การแชร์ไฟล์");
                     arrayBuffer = await proxyResp.arrayBuffer();
