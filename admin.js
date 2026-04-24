@@ -641,17 +641,23 @@ window.deleteSingleStudent = async function(id) {
     }
 };
 
+// ================= 1. ระบบนำเข้าไฟล์ Excel เอง (ซิงค์รายชื่อ + ข้ามชีทซ่อน) =================
 document.getElementById("importStudentsBtn")?.addEventListener("click", async () => {
     const file = document.getElementById("excelFileInput").files[0];
     if (!file) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ก่อน', 'warning');
-    Swal.fire({ title: 'กำลังประมวลผล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'กำลังเริ่มการซิงค์ข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     const reader = new FileReader();
     reader.onload = async function(e) {
         try {
             const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             let all = [];
-            wb.SheetNames.forEach(sn => {
+            
+            wb.SheetNames.forEach((sn, index) => {
+                // เช็กว่าชีทถูกซ่อนหรือไม่ ถ้าซ่อนให้ข้ามไป
+                const sheetInfo = wb.Workbook?.Sheets?.[index];
+                if (sheetInfo && sheetInfo.Hidden) return; 
+                
                 let currentLevel = "ไม่ระบุ"; 
                 let match = sn.match(/[mม]\.?\s*(\d)/i); 
                 if(match) currentLevel = `ม.${match[1]}`;
@@ -663,11 +669,9 @@ document.getElementById("importStudentsBtn")?.addEventListener("click", async ()
                     let roomMatchCell = r.find(c => typeof c==='string' && c.match(/\d+\s?\/\s?\d+/));
                     if(roomMatchCell) {
                         let cleanRoom = roomMatchCell.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, '');
-                        let levelNum = cleanRoom.split('/')[0]; 
-                        currentLevel = `ม.${levelNum}`; 
+                        currentLevel = `ม.${cleanRoom.split('/')[0]}`; 
                         currentRoom = `ม.${cleanRoom}`;
                     }
-
                     let idx = r.findIndex(c => /^\d{5}$/.test(c.toString().trim()));
                     if (idx !== -1) {
                         let fname = r[idx+2]||""; let lname = r[idx+3]||"";
@@ -679,24 +683,46 @@ document.getElementById("importStudentsBtn")?.addEventListener("click", async ()
                             currentLevel = `ม.${cleanInlineRoom.split('/')[0]}`;
                             currentRoom = `ม.${cleanInlineRoom}`;
                         }
-                        
+
                         if(fn.length > 5) {
                             all.push({ id: r[idx].toString().trim(), name: fn.replace(/['"]/g, ''), room: currentRoom, level: currentLevel });
                         }
                     }
                 });
             });
-            let unique = Array.from(new Map(all.map(item => [item.id, item])).values());
-            if(!unique.length) return Swal.fire('ผิดพลาด', 'ไม่พบรายชื่อในรูปแบบที่ถูกต้อง', 'error');
 
-            let batch = writeBatch(db); let count = 0;
-            for(let i=0; i<unique.length; i++) {
-                batch.set(doc(db, "students", unique[i].id), { name: unique[i].name, room: unique[i].room, level: unique[i].level, updated_at: serverTimestamp() });
-                count++; if(count===490 || i===unique.length-1) { await batch.commit(); batch = writeBatch(db); count = 0; }
+            let uniqueNewStudents = Array.from(new Map(all.map(item => [item.id, item])).values());
+            if(!uniqueNewStudents.length) return Swal.fire('ผิดพลาด', 'ไม่พบรายชื่อในรูปแบบที่ถูกต้อง', 'error');
+
+            // --- เริ่มระบบซิงค์ข้อมูล (เปรียบเทียบเก่า-ใหม่) ---
+            const existingSnapshot = await getDocs(collection(db, "students"));
+            const existingIds = existingSnapshot.docs.map(doc => doc.id);
+            const newIdsSet = new Set(uniqueNewStudents.map(s => s.id));
+            const idsToDelete = existingIds.filter(id => !newIdsSet.has(id)); // หาคนที่ไม่มีในไฟล์ใหม่
+
+            let batch = writeBatch(db); 
+            let count = 0;
+
+            // 1. อัปเดตและเพิ่มคนใหม่
+            for(let i=0; i<uniqueNewStudents.length; i++) {
+                const s = uniqueNewStudents[i];
+                batch.set(doc(db, "students", s.id), { name: s.name, room: s.room, level: s.level, updated_at: serverTimestamp() });
+                count++; 
+                if(count === 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
             }
-            Swal.fire('สำเร็จ', `อัปเดต ${unique.length} คน`, 'success');
-            document.getElementById("excelFileInput").value = ""; checkStudentCount();
-        } catch (err) { Swal.fire('ผิดพลาด', 'ไฟล์ไม่ถูกต้อง', 'error'); }
+
+            // 2. ลบคนที่ไม่มีชื่อในไฟล์ใหม่ออก
+            for(let i=0; i<idsToDelete.length; i++) {
+                batch.delete(doc(db, "students", idsToDelete[i]));
+                count++;
+                if(count === 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
+            }
+
+            await batch.commit();
+            Swal.fire('ซิงค์ข้อมูลสำเร็จ', `อัปเดต/เพิ่ม: ${uniqueNewStudents.length} คน<br>ลบรายชื่อเก่าที่หายไป: ${idsToDelete.length} คน`, 'success');
+            document.getElementById("excelFileInput").value = ""; 
+            checkStudentCount();
+        } catch (err) { Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการนำเข้า', 'error'); }
     };
     reader.readAsArrayBuffer(file);
 });
@@ -983,3 +1009,148 @@ async function checkSystemHealth() {
 
 // เปลี่ยนความถี่เป็นเช็กทุกๆ 1 นาที (60,000 มิลลิวินาที) แทน 30 วินาที เพื่อประหยัดโควตา 
 setInterval(checkSystemHealth, 60000);
+
+// ================= 2. ระบบดึงข้อมูลอัตโนมัติ (Hybrid + ซิงค์รายชื่อ + ข้ามชีทซ่อน) =================
+document.getElementById("autoImportWebBtn")?.addEventListener("click", async () => {
+    Swal.fire({
+        title: 'ระบบซิงค์ข้อมูลอัจฉริยะ',
+        text: 'ระบบจะสแกนและซิงค์รายชื่อให้ตรงกับไฟล์ปัจจุบัน (เพิ่มคนใหม่, ลบคนที่หายไป)',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'เริ่มสแกนและซิงค์',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#7e22ce'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            let sheetUrl = "";
+
+            try {
+                // สแกนเว็บ
+                Swal.fire({ title: 'กำลังสแกนเว็บไซต์...', html: 'ค้นหาลิงก์รายชื่อจาก www.mst.ac.th', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const targetWebUrl = encodeURIComponent("http://www.mst.ac.th/index.php");
+                const webProxyUrl = `https://corsproxy.io/?${targetWebUrl}`;
+                const webResponse = await fetch(webProxyUrl);
+                if (!webResponse.ok) throw new Error("Proxy ขัดข้อง");
+                
+                const webHtml = await webResponse.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(webHtml, "text/html");
+                const links = Array.from(doc.querySelectorAll('a'));
+                const targetLinkElement = links.find(a => a.textContent.includes('รายชื่อนักเรียน'));
+
+                if (!targetLinkElement || !targetLinkElement.href) throw new Error("ไม่พบเมนูรายชื่อ");
+                sheetUrl = targetLinkElement.href;
+            } catch (scanError) {
+                // กรณีเว็บล่ม ให้กรอกลิงก์เอง
+                const { value: manualUrl } = await Swal.fire({
+                    title: 'ระบบสแกนอัตโนมัติขัดข้อง',
+                    html: `<div class="text-sm text-red-500 mb-2">โปรดไปที่เว็บโรงเรียน ก๊อปปี้ลิงก์ Google Sheets ของรายชื่อมาวางด้านล่างนี้</div>`,
+                    input: 'url', inputPlaceholder: 'https://docs.google.com/spreadsheets/d/...',
+                    icon: 'warning', showCancelButton: true, confirmButtonText: 'ตกลง', confirmButtonColor: '#7e22ce'
+                });
+                if (manualUrl) sheetUrl = manualUrl; else return; 
+            }
+
+            try {
+                Swal.fire({ title: 'กำลังดาวน์โหลดไฟล์...', html: 'ดึงข้อมูลไฟล์ Excel มาตรวจสอบ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const idMatch = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (!idMatch) throw new Error("ลิงก์ที่วางไม่ใช่รูปแบบ Google Sheets ที่ถูกต้อง");
+                
+                const fileId = idMatch[1];
+                const xlsxExportUrl = `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx`;
+                
+                let arrayBuffer;
+                try {
+                    const directResp = await fetch(xlsxExportUrl);
+                    if (!directResp.ok) throw new Error("Direct fetch failed");
+                    arrayBuffer = await directResp.arrayBuffer();
+                } catch (e) {
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(xlsxExportUrl)}`;
+                    const proxyResp = await fetch(proxyUrl);
+                    if (!proxyResp.ok) throw new Error("ดาวน์โหลดไฟล์ไม่ได้ โปรดเช็คสิทธิ์การแชร์ไฟล์");
+                    arrayBuffer = await proxyResp.arrayBuffer();
+                }
+
+                Swal.fire({ title: 'กำลังวิเคราะห์และซิงค์...', html: 'แยกแยะรายชื่อและลบคนที่ไม่มีในระบบออก', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                let all = [];
+                
+                wb.SheetNames.forEach((sn, index) => {
+                    const sheetInfo = wb.Workbook?.Sheets?.[index];
+                    if (sheetInfo && sheetInfo.Hidden) return; // ข้ามชีทซ่อน
+
+                    let currentLevel = "ไม่ระบุ"; 
+                    let match = sn.match(/[mม]\.?\s*(\d)/i); 
+                    if(match) currentLevel = `ม.${match[1]}`;
+                    
+                    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: "" });
+                    let currentRoom = "ไม่ระบุ";
+                    
+                    rows.forEach(r => {
+                        let roomMatchCell = r.find(c => typeof c==='string' && c.match(/\d+\s?\/\s?\d+/));
+                        if(roomMatchCell) {
+                            let cleanRoom = roomMatchCell.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, '');
+                            currentLevel = `ม.${cleanRoom.split('/')[0]}`; 
+                            currentRoom = `ม.${cleanRoom}`;
+                        }
+
+                        let idx = r.findIndex(c => /^\d{5}$/.test(c.toString().trim()));
+                        if (idx !== -1) {
+                            let fname = r[idx+2]||""; let lname = r[idx+3]||"";
+                            let fn = (r.length > idx+4 && r[idx+4]) ? r[idx+4].toString().trim() : `${r[idx+1]||""}${fname} ${lname}`.trim();
+                            
+                            let inlineRoom = r.find(c => typeof c==='string' && c.match(/\d+\s?\/\s?\d+/)); 
+                            if(inlineRoom) {
+                                let cleanInlineRoom = inlineRoom.match(/\d+\s?\/\s?\d+/)[0].replace(/\s/g, '');
+                                currentLevel = `ม.${cleanInlineRoom.split('/')[0]}`;
+                                currentRoom = `ม.${cleanInlineRoom}`;
+                            }
+                            
+                            if(fn.length > 5) {
+                                all.push({ id: r[idx].toString().trim(), name: fn.replace(/['"]/g, ''), room: currentRoom, level: currentLevel });
+                            }
+                        }
+                    });
+                });
+
+                let uniqueNewStudents = Array.from(new Map(all.map(item => [item.id, item])).values());
+                if(uniqueNewStudents.length === 0) throw new Error("ไม่พบรายชื่อในรูปแบบที่ถูกต้องในชีทที่แสดงอยู่");
+
+                // --- เริ่มระบบซิงค์ข้อมูล (เปรียบเทียบเก่า-ใหม่) ---
+                const existingSnapshot = await getDocs(collection(db, "students"));
+                const existingIds = existingSnapshot.docs.map(doc => doc.id);
+                const newIdsSet = new Set(uniqueNewStudents.map(s => s.id));
+                const idsToDelete = existingIds.filter(id => !newIdsSet.has(id));
+
+                let batch = writeBatch(db); 
+                let count = 0;
+
+                // 1. อัปเดตและเพิ่มคนใหม่
+                for(let i=0; i<uniqueNewStudents.length; i++) {
+                    batch.set(doc(db, "students", uniqueNewStudents[i].id), { 
+                        name: uniqueNewStudents[i].name, room: uniqueNewStudents[i].room, level: uniqueNewStudents[i].level, updated_at: serverTimestamp() 
+                    });
+                    count++; 
+                    if(count === 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
+                }
+
+                // 2. ลบคนที่ไม่มีชื่อในไฟล์ใหม่ออก
+                for(let i=0; i<idsToDelete.length; i++) {
+                    batch.delete(doc(db, "students", idsToDelete[i]));
+                    count++;
+                    if(count === 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
+                }
+                
+                await batch.commit();
+                Swal.fire('ซิงค์ข้อมูลสำเร็จ', `อัปเดต/เพิ่ม: ${uniqueNewStudents.length} คน<br>ลบรายชื่อเก่าที่หายไป: ${idsToDelete.length} คน`, 'success');
+                checkStudentCount(); 
+
+            } catch (error) {
+                console.error("Data Fetch Error:", error);
+                Swal.fire('ล้มเหลว', error.message, 'error');
+            }
+        }
+    });
+});
+// =================================================================================

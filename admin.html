@@ -110,6 +110,9 @@ img[src*="Logo_mstsc"] {
             <button onclick="switchTab('students')" class="nav-link w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-white/5 transition-all text-purple-200 hover:text-white" id="btn-students">
                 <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> ฐานข้อมูลนักเรียน
             </button>
+            <button onclick="switchTab('manual')" class="nav-link w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-white/5 transition-all text-purple-200 hover:text-white" id="btn-manual">
+                <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> คู่มือการใช้งาน
+            </button>
         </nav>
         <div class="p-4 border-t border-white/10 bg-black/10">
             <button id="logoutBtn" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm font-medium">
@@ -278,8 +281,14 @@ img[src*="Logo_mstsc"] {
         <section id="tab-students" class="tab-content hidden">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="glass-panel p-6 rounded-3xl shadow-sm border border-gray-100 text-center flex flex-col items-center justify-center">
-                    <h3 class="text-xl font-bold text-gray-800 mb-2">อัปโหลดไฟล์นักเรียนทั้งหมด</h3>
-                    <p class="text-xs text-gray-500 mb-6">ไฟล์ .xlsx หรือ .csv</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">นำเข้ารายชื่อนักเรียนทั้งหมด</h3>
+                    <button id="autoImportWebBtn" class="bg-purple-600 text-white px-6 py-2.5 mt-3 rounded-xl text-sm font-bold hover:bg-purple-700 transition-all w-full max-w-xs shadow-md flex items-center justify-center gap-2 relative overflow-hidden group">
+                    <svg class="w-4 h-4 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    ดึงรายชื่อจากเว็บโรงเรียน (แนะนำ)
+                    </button>
+                    <p class="text-xs text-gray-500 mb-6"><br>สะดวกรวดเร็ว ไม่ต้องเตรียมไฟล์เอง เพียงกดปุ่มด้านบน</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">หรือ อัปโหลดไฟล์ด้วยตนเอง</h3>
+                    <p class="text-xs text-gray-500 mb-6">รองรับไฟล์ .xlsx หรือ .csv</p>
                     <input type="file" id="excelFileInput" class="hidden" accept=".xlsx, .xls, .csv" multiple>
                     <button onclick="document.getElementById('excelFileInput').click()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all w-full max-w-xs mb-3 shadow-md">เลือกไฟล์</button>
                     <button id="importStudentsBtn" class="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all w-full max-w-xs">กดยืนยันนำเข้าข้อมูล</button>
@@ -358,16 +367,89 @@ img[src*="Logo_mstsc"] {
             </div>
         </section>
 
+        <section id="tab-manual" class="tab-content hidden fade-in">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+                <div class="mb-8 text-center md:text-left">
+                    <h3 class="text-2xl font-extrabold text-purple-800 mb-2">คู่มือการใช้งานระบบสำหรับผู้ดูแล (Administrator Guide)</h3>
+                    <p class="text-gray-500 text-sm">อธิบายขั้นตอนการตั้งค่า การจัดการฐานข้อมูล และการควบคุมการเลือกตั้งอย่างเป็นทางการ</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:border-purple-300 transition-colors">
+                        <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black text-sm">1</span>
+                            การเตรียมฐานข้อมูลนักเรียน (Student Database)
+                        </h4>
+                        <div class="text-sm text-gray-600 leading-relaxed space-y-3 pl-11">
+                            <p>ก่อนเริ่มการเลือกตั้งทุกครั้ง ต้องตรวจสอบและอัปเดตรายชื่อผู้มีสิทธิ์ลงคะแนนให้เป็นปัจจุบัน ระบบรองรับการนำเข้าข้อมูล 3 วิธี:</p>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li><b>ระบบซิงค์อัจฉริยะ (แนะนำ):</b> กดปุ่ม <span class="text-purple-600 font-bold">"ดึงรายชื่อจากเว็บโรงเรียน"</span> ระบบจะทำการเชื่อมต่อเพื่อดึงรายชื่อนักเรียนล่าสุด เพิ่มรายชื่อใหม่ และลบรายชื่อนักเรียนที่ลาออกให้อัตโนมัติ</li>
+                                <li><b>การนำเข้าผ่านไฟล์ Excel:</b> หากต้องการใช้ฐานข้อมูลเฉพาะกิจ สามารถอัปโหลดไฟล์ <code>.xlsx</code> ระบบจะวิเคราะห์คอลัมน์รหัสนักเรียนและห้องเรียนให้อัตโนมัติ (ข้ามชีทที่ถูกซ่อนไว้)</li>
+                                <li><b>การเพิ่มรายบุคคล:</b> ใช้ฟอร์มกรอกข้อมูลเพื่อเพิ่มนักเรียนใหม่ หรือแก้ไขนักเรียนตกหล่นเป็นรายบุคคล</li>
+                            </ul>
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800 mt-3 text-xs">
+                                <b>หมายเหตุ:</b> ผู้ใช้ที่ไม่มีรหัสในฐานข้อมูลนี้ จะไม่สามารถเข้าสู่คูหาลงคะแนนได้ แม้จะใช้อีเมล @mst.ac.th ก็ตาม
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:border-purple-300 transition-colors">
+                        <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black text-sm">2</span>
+                            การสร้างและตั้งค่าการเลือกตั้ง (Campaign Setup)
+                        </h4>
+                        <div class="text-sm text-gray-600 leading-relaxed space-y-3 pl-11">
+                            <p>ไปที่เมนู <b>"จัดการการเลือกตั้ง"</b> และกด <b>"สร้างรายการใหม่"</b> โดยต้องกำหนดค่าที่สำคัญดังนี้:</p>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li><b>กลุ่มเป้าหมายผู้มีสิทธิ์:</b> สามารถเลือกให้โหวตได้ทั้งโรงเรียน, เฉพาะ ม.ต้น, เฉพาะ ม.ปลาย, หรือเจาะจงระดับชั้น/ห้องเรียนได้ (เช่น ม.6/1)</li>
+                                <li><b>กำหนดเวลา:</b> ตั้งเวลาเปิด-ปิดล่วงหน้าได้ หากไม่ระบุเวลาเปิด ระบบจะถือว่าเปิดให้โหวตทันทีที่กดบันทึก</li>
+                                <li><b>การจัดการตัวเลือก (ผู้สมัคร):</b> ระบบรองรับการอัปโหลดรูปภาพผ่าน Image Hosting อัตโนมัติ หรือสามารถวางข้อมูลจาก Google Sheets ได้โดยตรงผ่านปุ่ม <span class="text-purple-600 font-bold">"วางจาก Excel"</span></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:border-purple-300 transition-colors">
+                        <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black text-sm">3</span>
+                            การควบคุมและติดตามผล (Monitoring & Control)
+                        </h4>
+                        <div class="text-sm text-gray-600 leading-relaxed space-y-3 pl-11">
+                            <p>ในขณะที่การเลือกตั้งกำลังดำเนินอยู่ ผู้ดูแลสามารถควบคุมระบบได้จากหน้าจัดการการเลือกตั้ง:</p>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li><b>การระงับชั่วคราว:</b> กดปุ่ม <b>"ปิดระบบ"</b> เพื่อหยุดรับการลงคะแนนชั่วคราว (นักเรียนจะไม่สามารถโหวตได้จนกว่าจะเปิดอีกครั้ง)</li>
+                                <li><b>การตรวจสอบสถานะเซิร์ฟเวอร์:</b> หน้าแดชบอร์ดมีระบบประเมินความหน่วง (Latency) และปริมาณผู้ใช้งาน หากสถานะขึ้น <span class="text-orange-500 font-bold">"เสี่ยง (Load)"</span> โปรดระวังการเรียกดูข้อมูลซ้ำซ้อน</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:border-purple-300 transition-colors">
+                        <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-black text-sm">4</span>
+                            การประกาศผลและออกเอกสารอ้างอิง (Exporting Reports)
+                        </h4>
+                        <div class="text-sm text-gray-600 leading-relaxed space-y-3 pl-11">
+                            <p>เมื่อสิ้นสุดการเลือกตั้ง สามารถตรวจสอบผลคะแนนโดยละเอียดได้ผ่านปุ่ม <b>"ผลคะแนน"</b>:</p>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>ระบบจะแสดงกราฟคะแนนรวม และสถิติการใช้สิทธิ์แยกตามระดับชั้นและห้องเรียนให้อัตโนมัติ</li>
+                                <li><b>การส่งออก PDF:</b> สำหรับใช้เป็นเอกสารรายงานที่เป็นทางการและพิมพ์เพื่อลงนาม</li>
+                                <li><b>การส่งออก Excel:</b> เพื่อนำข้อมูลไปวิเคราะห์ต่อหรือทำสรุปสถิติเชิงลึก</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
     </main>
     
     <script>
         // ฟังก์ชันสลับ Tab ที่รองรับทั้ง Desktop และ Mobile Bottom Nav
 function switchTab(tabName) {
-    // ซ่อนเนื้อหาเดิมและแสดงเนื้อหาใหม่
+    // 1. ซ่อนเนื้อหาเดิมและแสดงเนื้อหาใหม่
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.getElementById('tab-' + tabName).classList.remove('hidden');
 
-    // อัปเดตสีปุ่ม Sidebar (Desktop)
+    // 2. อัปเดตสีปุ่ม Sidebar (Desktop)
     document.querySelectorAll('.nav-link').forEach(btn => {
         btn.classList.remove('bg-white/10', 'text-white');
         btn.classList.add('text-purple-200');
@@ -375,7 +457,7 @@ function switchTab(tabName) {
     const activeBtn = document.getElementById('btn-' + tabName);
     if(activeBtn) activeBtn.classList.add('bg-white/10', 'text-white');
 
-    // อัปเดตสีปุ่ม Bottom Nav (Mobile)
+    // 3. อัปเดตสีปุ่ม Bottom Nav (Mobile)
     document.querySelectorAll('.mobile-nav-link').forEach(btn => {
         btn.classList.remove('text-purple-600');
         btn.classList.add('text-gray-400');
@@ -383,11 +465,25 @@ function switchTab(tabName) {
     const activeMobileBtn = document.getElementById('m-btn-' + tabName);
     if(activeMobileBtn) activeMobileBtn.classList.add('text-purple-600');
 
-    // เปลี่ยน Title ของหน้า
-    const titles = { 'dashboard': 'ภาพรวมระบบ', 'campaigns': 'จัดการการเลือกตั้ง', 'students': 'ฐานข้อมูลนักเรียน' };
+    // 4. อัปเดตชื่อหน้า (Title) และ คำอธิบายหน้า (Subtitle)
+    const titles = { 
+        'dashboard': 'ภาพรวมระบบ', 
+        'campaigns': 'จัดการการเลือกตั้ง', 
+        'students': 'ฐานข้อมูลนักเรียน',
+        'manual': 'คู่มือการใช้งานระบบ'
+    };
+
+    const subtitles = {
+        'dashboard': 'สรุปสถิติผู้ใช้งานและสถานะระบบแบบเรียลไทม์',
+        'campaigns': 'สร้าง แก้ไข และจัดการรายการลงคะแนนทั้งหมดในระบบ',
+        'students': 'จัดการรายชื่อผู้มีสิทธิ์ลงคะแนนและตรวจสอบฐานข้อมูล',
+        'manual': 'เรียนรู้ขั้นตอนการใช้งานและข้อปฏิบัติสำหรับผู้ดูแลระบบ'
+    };
+
     document.getElementById('pageTitle').innerText = titles[tabName];
+    document.getElementById('pageSubtitle').innerText = subtitles[tabName]; // เพิ่มบรรทัดนี้
     
-    // เลื่อนขึ้นบนสุดเมื่อเปลี่ยนหน้า
+    // 5. เลื่อนขึ้นบนสุดเมื่อเปลี่ยนหน้า
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -406,6 +502,10 @@ function switchTab(tabName) {
     <button onclick="switchTab('students')" class="mobile-nav-link flex flex-col items-center gap-1 text-gray-400" id="m-btn-students">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
         <span class="text-[10px] font-bold">นักเรียน</span>
+    </button>
+    <button onclick="switchTab('manual')" class="mobile-nav-link flex flex-col items-center gap-1 text-gray-400" id="m-btn-manual">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <span class="text-[10px] font-bold">คู่มือ</span>
     </button>
     <button id="mobileLogoutBtn" class="flex flex-col items-center gap-1 text-red-400">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
